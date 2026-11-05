@@ -6,7 +6,7 @@ import { ServiceError } from '../types';
 import type { ConnectionState, Services, SessionEventHandlers } from '../types';
 import type { DbPost, DbSession } from './db';
 import {
-  MOCK_STAFF,
+  MOCK_ADMIN,
   commit,
   currentStaff,
   db,
@@ -25,7 +25,7 @@ import { SAMPLE_POSTS, genCode } from './seed';
 
 function viewer(): Viewer {
   const staff = currentStaff();
-  if (staff) return { uid: staff.uid, staff: { displayName: staff.displayName, role: staff.role } };
+  if (staff) return { uid: staff.uid, staff: { displayName: staff.displayName } };
   return { uid: memberUid(), staff: null };
 }
 
@@ -210,8 +210,7 @@ export const mockServices: Services = {
       const e = email.trim().toLowerCase();
       if (!e || !password || password === 'wrong') throw new ServiceError('invalid_credentials');
       if (e.includes('member')) throw new ServiceError('not_staff');
-      const base = e.includes('staff') ? MOCK_STAFF.staff : MOCK_STAFF.pastor;
-      setCurrentStaff({ ...base, email: e });
+      setCurrentStaff({ ...MOCK_ADMIN, email: e });
       return viewer();
     },
     async signOut() {
@@ -319,7 +318,7 @@ export const mockServices: Services = {
     async remove(id) {
       await delay(300, 500);
       assertOnline();
-      if (requireStaff().staff.role !== 'pastor') throw new ServiceError('forbidden');
+      requireStaff();
       const d = db();
       const postIds = new Set(d.posts.filter((p) => p.sessionId === id).map((p) => p.id));
       d.sessions = d.sessions.filter((s) => s.id !== id);
@@ -411,7 +410,6 @@ export const mockServices: Services = {
       await delay(250, 500);
       assertOnline();
       const v = requireStaff();
-      if (v.staff.role !== 'pastor') throw new ServiceError('forbidden');
       const text = body.trim();
       if (!text || text.length > LIMITS.replyBody) throw new ServiceError('invalid_input');
       const p = findPost(postId);

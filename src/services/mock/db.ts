@@ -1,7 +1,7 @@
 // 假資料儲存（plan §6.1）：存在 localStorage，重新整理後保留；
 // 同一台電腦的其他分頁透過 storage 事件同步，方便同時開會友端與管理端走查。
 
-import type { SessionStatus, StaffRole } from '@/types/models';
+import type { SessionStatus } from '@/types/models';
 import { buildSeed } from './seed';
 
 export interface DbSession {
@@ -56,7 +56,6 @@ export interface MockStaff {
   uid: string;
   email: string;
   displayName: string;
-  role: StaffRole;
 }
 
 export const DB_VERSION = 1;
@@ -65,10 +64,8 @@ const KEY_UID = 'echo.mock.uid';
 export const KEY_STAFF = 'echo.mock.staff';
 const KEY_LIVE = 'echo.mock.live';
 
-export const MOCK_STAFF: Record<StaffRole, Omit<MockStaff, 'email'>> = {
-  pastor: { uid: 'staff-pastor', displayName: '王牧師', role: 'pastor' },
-  staff: { uid: 'staff-helper', displayName: '同工小華', role: 'staff' },
-};
+/** 管理帳號只有一種身分，牧者、同工權限相同（spec D12） */
+export const MOCK_ADMIN: Omit<MockStaff, 'email'> = { uid: 'staff-pastor', displayName: '王牧師' };
 
 function read<T>(key: string): T | null {
   try {

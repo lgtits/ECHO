@@ -24,7 +24,7 @@
 
 - [x] **T100** `types/models.ts` 領域模型；`services/types.ts` 服務介面；`services/mock/` 記憶體假資料（多場次、多則留言與回覆、模擬延遲）；`services/index.ts` 依 `QCLI_DATA_SOURCE` 選實作
 - [x] **T101** mock 即時事件：`subscribeSession` 以計時器模擬新留言、附議變動、斷線與重連（AC4.1–4.3 的畫面行為）
-- [x] **T102** mock 身分：會友匿名 uid、管理者假登入（含 `staff` 的 Email 視為同工）、「重設示範資料」
+- [x] **T102** mock 身分：會友匿名 uid、管理者假登入、「重設示範資料」
 - [x] **T021** `utils/sortFilter.ts` + Vitest（AC3.3, AC6.1）
 - [x] **T103** `utils/time.ts` 相對時間 / `HH:mm` / `M/D HH:mm` + Vitest（ux.md §6.7）
 
@@ -39,6 +39,7 @@
 - [x] **T029** 即時更新不跳動：`NewPostsPill`、熱門排序不即時重排、斷線提示（ux.md §6）
 - [x] **T039** 共用 `StageView` / `StageCard`：小卡、不顯示暱稱、上一則/下一則、鍵盤、全螢幕、即時更新（AC9.1–9.5；ux.md A7）
 - [x] **T109** `MemberHeader` 會友端頁首：白底固定、「‹ ECHO」回首頁、右側「投影」、捲動後顯示場次標題（ux.md §1.3，2026-11-03）
+- [x] **T110** 只有一種管理身分（拿掉牧者／同工區分）；會友端頁首「QR code」開全螢幕 QR（spec D12、AC5.12，2026-11-04）
 - [x] **T039a** 會友端放大：留言列「放大」、頁首「投影」、`/s/:code/stage` 唯讀小卡，過去場次也可用（AC9.6, 9.7）
 
 **管理端（US5–US7、US9）**
@@ -49,7 +50,7 @@
 - [x] **T033** 場次狀態切換、自動結束時間設定、刪除場次（輸入標題確認）（AC5.3, 5.6, 5.9）
 - [x] **T034** `QrShareDialog`（A6）：以 `SITE_URL` 產生 QR（qrcode 套件，等級 M）、複製連結、下載 PNG 1024px / SVG、全螢幕投影 QR、固定 `/now` QR（AC5.4；plan §7.1）
 - [x] **T035** `SessionManagePage`（A4）：電腦雙欄 / 手機單欄、預設「待回應＋最多附議」、分頁計數（AC6.1）
-- [x] **T036** `ReplyEditor`（A5）：新增/編輯/刪除回覆、`Ctrl+Enter`；同工看不到回覆（AC6.2, 6.3, 6.5；Q1）
+- [x] **T036** `ReplyEditor`（A5）：新增/編輯/刪除回覆、`Ctrl+Enter`（AC6.2, 6.3, 6.5）
 - [x] **T037** `PostCard` admin 模式：隱藏/取消隱藏、5 秒復原（AC7.1–7.3）
 - [x] **T038** 會友頁的管理者提示列、「以會友身分預覽」（AC5.7, 5.8）
 - [x] **T039b** 管理端 `admin/StagePage`：共用 StageView，加「文字回覆」（AC9.4）
@@ -72,13 +73,13 @@
 - [ ] **T005** 建立 Supabase 專案；啟用 Anonymous Sign-ins、關閉公開註冊；提供 URL 與 publishable key `👤`
 - [ ] **T006** 安裝 Supabase CLI、`supabase init`、`supabase link`（本機可先 `supabase start`，不必等 T005）
 - [ ] **T010** Migration：enums、`staff_members`、`sessions`、`posts`、`upvotes`、`replies`、索引
-- [ ] **T011** Migration：`is_staff()`、`is_pastor()`、`gen_session_code()`、`session_is_writable()`
+- [ ] **T011** Migration：`is_staff()`、`gen_session_code()`、`session_is_writable()`
 - [ ] **T012** Migration：所有 triggers（plan §3.2）與欄位層級權限
 - [ ] **T013** Migration：RLS policies（plan §4 權限矩陣）
 - [ ] **T014** pgTAP 測試：權限矩陣每一格（含任何人都不能直接 DELETE posts、前端角色都讀不到 `posts.author_id`）+ 頻率限制 + 計數正確性
 - [ ] **T019** Migration：啟用 pg_cron，每分鐘自動結束到期場次；pgTAP 測試到期後無法發文（AC5.9；plan §3.1.1）
 - [ ] **T016** `supabase gen types` → `src/types/database.ts`
-- [ ] **T017** 建立牧者、同工測試帳號並寫入 `staff_members` `👤`
+- [ ] **T017** 建立管理帳號（可只有一個）並寫入 `staff_members` `👤`
 - [ ] **T018** GitHub Actions `db-test.yml`：CI 執行 `supabase test db`
 - [ ] **T108** GitHub Actions `keepalive.yml`：每日排程呼叫一次 Supabase API，避免免費專案閒置暫停（spec §7.1 P-02）
 
@@ -106,6 +107,6 @@
 
 - [ ] **T050** 無障礙與長者友善檢查（字級、對比、觸控區）
 - [ ] **T051** 安全檢查：以匿名 key 直接呼叫 REST API 嘗試越權
-- [ ] **T052** 使用說明（給牧者/同工的操作手冊一頁）
+- [ ] **T052** 使用說明（給管理者的操作手冊一頁）
 - [ ] **T053** 主日試營運，收集回饋 → 更新 spec / backlog
 - [ ] **T054** RWD 驗收（真實資料）：360、390、768、1024、1366、1440、1920 寬度下，會友端與管理端所有頁面（含講台模式、過去場次）皆可完整操作（AC1.6, AC5.10；ux.md §2.1）

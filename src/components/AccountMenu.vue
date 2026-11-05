@@ -41,7 +41,7 @@ function reset() {
     {{ auth.displayName }}<span aria-hidden="true">▾</span>
     <q-menu anchor="bottom right" self="top right">
       <q-list style="min-width: 220px">
-        <q-item-label header>{{ auth.isPastor ? '牧者' : '同工' }}帳號</q-item-label>
+        <q-item-label header>管理帳號</q-item-label>
         <q-item v-close-popup clickable @click="signOut">
           <q-item-section>登出</q-item-section>
         </q-item>

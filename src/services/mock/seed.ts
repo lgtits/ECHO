@@ -118,7 +118,7 @@ export function buildSeed(myUid: string): MockDb {
       nickname,
       body,
       isHidden: !!o.hidden,
-      hiddenByName: o.hidden ? '同工小華' : null,
+      hiddenByName: o.hidden ? '王牧師' : null,
       hiddenAt: o.hidden ? minAgo(ago - 1) : null,
       createdAt: minAgo(ago),
     };

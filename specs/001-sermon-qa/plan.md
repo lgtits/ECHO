@@ -27,7 +27,7 @@
                        │  supabase-js
                        ▼
                  Supabase
-                 ├─ Auth：匿名（會友）/ Email（牧者、同工）
+                 ├─ Auth：匿名（會友）/ Email（管理者，單一身分）
                  ├─ Postgres：tables + RLS + triggers
                  └─ Realtime：postgres_changes + broadcast
 ```
@@ -37,13 +37,11 @@
 ```sql
 -- 列舉
 create type session_status as enum ('draft', 'open', 'closed');
-create type staff_role     as enum ('pastor', 'staff');
 
--- 管理者（牧者 / 同工）
+-- 管理者（牧者、同工權限相同，spec D12）
 create table staff_members (
   user_id      uuid primary key references auth.users on delete cascade,
   display_name text not null,            -- 例：王牧師
-  role         staff_role not null,
   created_at   timestamptz not null default now()
 );
 
@@ -86,7 +84,7 @@ create table upvotes (
   primary key (post_id, user_id)           -- 保證每人每則一次 (AC3.2)
 );
 
--- 牧者回覆
+-- 管理者回覆
 create table replies (
   id          uuid primary key default gen_random_uuid(),
   post_id     uuid not null references posts on delete cascade,
@@ -104,7 +102,6 @@ create table replies (
 ### 3.1 輔助函式（`security definer`, `stable`）
 
 - `is_staff()`：`auth.uid()` 存在於 `staff_members`。
-- `is_pastor()`：同上且 `role = 'pastor'`。
 - `gen_session_code()`：產生不重複 6 碼。
 - `session_is_writable(session_id)`：`status = 'open'` 且（`auto_close_at` 為空或 `now() < auto_close_at`）。發文、附議的檢查都用它，所以**到時間的那一秒就停止寫入**，不必等排程。
 
@@ -150,21 +147,21 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 
 會友 = `authenticated` 且不在 `staff_members`；未登入的 `anon` 角色權限同會友唯讀。
 
-| 資料表        | 動作                 | 會友                                              | 同工       | 牧者                                         |
-| ------------- | -------------------- | ------------------------------------------------- | ---------- | -------------------------------------------- |
-| sessions      | SELECT               | `status in (open, closed)`                        | 全部       | 全部                                         |
-|               | INSERT / UPDATE      | ✗                                                 | ✓          | ✓                                            |
-|               | DELETE               | ✗                                                 | ✗          | ✓                                            |
-| posts         | SELECT               | 未隱藏，且所屬場次非草稿                          | 全部       | 全部                                         |
-|               | INSERT               | 場次可寫入（`session_is_writable`，trigger 檢查） | ✓          | ✓                                            |
-|               | UPDATE (`is_hidden`) | ✗                                                 | ✓          | ✓                                            |
-|               | DELETE               | ✗（spec D9）                                      | ✗          | ✗（只隨場次刪除一起刪，`on delete cascade`） |
-| upvotes       | SELECT               | 只看自己的（判斷已附議）                          | 只看自己的 | 只看自己的                                   |
-|               | INSERT / DELETE      | 自己的，且留言可見、場次可寫入                    | 同左       | 同左                                         |
-| replies       | SELECT               | 所屬留言可見時                                    | 全部       | 全部                                         |
-|               | INSERT               | ✗                                                 | ✗ _(Q1)_   | ✓                                            |
-|               | UPDATE / DELETE      | ✗                                                 | ✗          | 自己的                                       |
-| staff_members | SELECT               | ✗                                                 | 自己       | 全部                                         |
+| 資料表        | 動作                     | 會友                                              | 管理者                                       |
+| ------------- | ------------------------ | ------------------------------------------------- | -------------------------------------------- |
+| sessions      | SELECT                   | `status in (open, closed)`                        | 全部                                         |
+|               | INSERT / UPDATE / DELETE | ✗                                                 | ✓                                            |
+| posts         | SELECT                   | 未隱藏，且所屬場次非草稿（不含 `author_id`）      | 全部（不含 `author_id`）                     |
+|               | INSERT                   | 場次可寫入（`session_is_writable`，trigger 檢查） | ✓                                            |
+|               | UPDATE (`is_hidden`)     | ✗                                                 | ✓                                            |
+|               | DELETE                   | ✗（spec D9）                                      | ✗（只隨場次刪除一起刪，`on delete cascade`） |
+| upvotes       | SELECT                   | 只看自己的（判斷已附議）                          | 只看自己的                                   |
+|               | INSERT / DELETE          | 自己的，且留言可見、場次可寫入                    | 同左                                         |
+| replies       | SELECT                   | 所屬留言可見時                                    | 全部                                         |
+|               | INSERT / UPDATE / DELETE | ✗                                                 | ✓                                            |
+| staff_members | SELECT                   | ✗                                                 | 全部                                         |
+
+> 2026-11-04 起只有一種管理身分（spec D12），不再區分牧者、同工，也不需要 `is_pastor()`。
 
 每一格都要有 pgTAP 測試（`supabase/tests/rls_*.test.sql`）。
 
@@ -243,9 +240,9 @@ supabase/
 - **切換規則**：`QCLI_DATA_SOURCE=mock | supabase`，未設定時用 `mock`。github.io 上的 UI 原型也用 mock，方便在手機上走查。
 - **介面**：`services/types.ts` 定義每個服務的方法與回傳的領域模型（`types/models.ts`）。mock 與 supabase 實作同一組介面，元件與 store 不知道背後是哪一個。
 - **即時事件**：介面提供 `subscribeSession(sessionId, handlers)`，回傳取消訂閱函式。mock 版以計時器模擬新留言、附議變動、斷線重連，讓 ux.md §6 的「不跳動」行為在 Phase 1 就能驗收。
-- **假身分**：mock 版的會友身分存在 `localStorage`（`echo.mock.uid`）；登入頁接受任何 Email，含 `staff` 的視為同工，其餘視為牧者（畫面上有提示）。
+- **假身分**：mock 版的會友身分存在 `localStorage`（`echo.mock.uid`）；登入頁接受任何 Email，一律以示範管理帳號「王牧師」登入（畫面上有提示）。
 - **假資料重設**：mock 資料存在 `localStorage`（`echo.mock.db`），重新整理後保留；管理端「⋯」選單在 mock 模式多一項「重設示範資料」。
-- **mock 不做權限**：mock 只模擬畫面需要的行為（例如同工看不到回覆按鈕、會友看不到隱藏留言），**真正的權限仍只以 RLS 實作**（憲章）。
+- **mock 不做權限**：mock 只模擬畫面需要的行為（例如會友看不到隱藏留言），**真正的權限仍只以 RLS 實作**（憲章）。
 - 會友的暱稱存在 `localStorage`（`echo.nickname`）。
 - 匿名 session 由 supabase-js 自動存在 localStorage，同一瀏覽器再次進入即為同一身分 (AC1.4)。
 
@@ -329,19 +326,19 @@ DB 產生場次碼 ──▶ 前端組網址 ──▶ qrcode 套件在瀏覽器
 
 ## 9. 規格覆蓋檢查
 
-| FR     | 實作位置                                                 | 驗證                |
-| ------ | -------------------------------------------------------- | ------------------- |
-| FR-001 | boot/supabase.ts 匿名登入                                | 手動 + e2e 手動腳本 |
-| FR-002 | sessions RLS、BoardPage                                  | pgTAP、手動         |
-| FR-003 | posts trigger + 欄位權限、PostComposer                   | pgTAP               |
-| FR-004 | （已取消）posts DELETE policy 對會友、同工、牧者一律拒絕 | pgTAP               |
-| FR-005 | upvotes PK + policy + trigger                            | pgTAP               |
-| FR-006 | utils/sortFilter.ts                                      | Vitest              |
-| FR-007 | services/supabase/realtime.ts（mock 版先驗畫面行為）     | 手動（雙瀏覽器）    |
-| FR-008 | auth store、路由守衛、staff_members                      | pgTAP、手動         |
-| FR-009 | sessions policy、admin 頁面                              | pgTAP、手動         |
-| FR-010 | QrShareDialog.vue、utils/sessionUrl.ts                   | 手動                |
-| FR-011 | replies policy + trigger                                 | pgTAP               |
-| FR-012 | posts UPDATE policy + trigger                            | pgTAP               |
-| FR-013 | utils/export.ts                                          | Vitest              |
-| FR-014 | StageView.vue（篩選/排序沿用 utils/sortFilter.ts）       | 手動（平板實測）    |
+| FR     | 實作位置                                             | 驗證                |
+| ------ | ---------------------------------------------------- | ------------------- |
+| FR-001 | boot/supabase.ts 匿名登入                            | 手動 + e2e 手動腳本 |
+| FR-002 | sessions RLS、BoardPage                              | pgTAP、手動         |
+| FR-003 | posts trigger + 欄位權限、PostComposer               | pgTAP               |
+| FR-004 | （已取消）posts DELETE policy 對會友、管理者一律拒絕 | pgTAP               |
+| FR-005 | upvotes PK + policy + trigger                        | pgTAP               |
+| FR-006 | utils/sortFilter.ts                                  | Vitest              |
+| FR-007 | services/supabase/realtime.ts（mock 版先驗畫面行為） | 手動（雙瀏覽器）    |
+| FR-008 | auth store、路由守衛、staff_members                  | pgTAP、手動         |
+| FR-009 | sessions policy、admin 頁面                          | pgTAP、手動         |
+| FR-010 | QrShareDialog.vue、utils/sessionUrl.ts               | 手動                |
+| FR-011 | replies policy + trigger                             | pgTAP               |
+| FR-012 | posts UPDATE policy + trigger                        | pgTAP               |
+| FR-013 | utils/export.ts                                      | Vitest              |
+| FR-014 | StageView.vue（篩選/排序沿用 utils/sortFilter.ts）   | 手動（平板實測）    |

@@ -2,7 +2,6 @@
 // DB 型別（types/database.ts，Phase 2 產生）與這裡的轉換只在 services/ 內進行。
 
 export type SessionStatus = 'draft' | 'open' | 'closed';
-export type StaffRole = 'pastor' | 'staff';
 
 export interface Session {
   id: string;
@@ -54,7 +53,6 @@ export interface Post {
 
 export interface StaffProfile {
   displayName: string;
-  role: StaffRole;
 }
 
 /** 目前使用這個瀏覽器的人 */

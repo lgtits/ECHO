@@ -8,7 +8,6 @@ export const useAuthStore = defineStore('auth', () => {
   let loading: Promise<Viewer> | null = null;
 
   const isStaff = computed(() => !!viewer.value?.staff);
-  const isPastor = computed(() => viewer.value?.staff?.role === 'pastor');
   const displayName = computed(() => viewer.value?.staff?.displayName ?? '');
 
   /** 第一次呼叫時取得身分（會友在背景建立匿名身分，AC1.4） */
@@ -26,5 +25,5 @@ export const useAuthStore = defineStore('auth', () => {
     viewer.value = await services.auth.signOut();
   }
 
-  return { viewer, isStaff, isPastor, displayName, ensure, signIn, signOut };
+  return { viewer, isStaff, displayName, ensure, signIn, signOut };
 });

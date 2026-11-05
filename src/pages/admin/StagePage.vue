@@ -2,7 +2,6 @@
 // 管理端講台模式（ux.md A7；AC9.1–9.5）：沿用進入時 A4 的篩選與排序，可文字回覆。
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
 import { useBoardStore } from '@/stores/board';
 import StageView from '@/components/StageView.vue';
 import ReplyEditor from '@/components/ReplyEditor.vue';
@@ -11,7 +10,6 @@ import { formatShortDate } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();
-const auth = useAuthStore();
 const board = useBoardStore();
 
 const id = computed(() => String(route.params.id ?? ''));
@@ -58,7 +56,7 @@ onBeforeUnmount(() => board.endStage());
       :session-title="board.session.title"
       :session-date="formatShortDate(board.session.sermonDate)"
       :label="label"
-      :can-reply="auth.isPastor"
+      can-reply
       @update:current-id="setCurrent"
       @close="close"
       @reply="replyOpen = true"

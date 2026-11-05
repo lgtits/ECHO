@@ -89,7 +89,7 @@ withDefaults(
   &__title {
     position: absolute;
     left: 36px;
-    right: 88px;
+    right: 160px; // 右側動作按鈕的寬度
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;

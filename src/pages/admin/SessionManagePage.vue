@@ -4,7 +4,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { copyToClipboard, useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
 import { useBoardStore } from '@/stores/board';
 import { useSessionsStore } from '@/stores/sessions';
 import { useBreakpoint } from '@/composables/useBreakpoint';
@@ -22,7 +21,6 @@ import { formatHm, formatShortDate, parseDate } from '@/utils/time';
 const $q = useQuasar();
 const route = useRoute();
 const router = useRouter();
-const auth = useAuthStore();
 const board = useBoardStore();
 const sessions = useSessionsStore();
 const { isDesktop } = useBreakpoint();
@@ -40,7 +38,7 @@ const heroHidden = ref(false);
 
 const showHero = computed(() => route.query.created === '1' && !heroHidden.value);
 const replyPost = computed(() => (replyId.value ? (board.get(replyId.value) ?? null) : null));
-const showPanel = computed(() => isDesktop.value && auth.isPastor);
+const showPanel = computed(() => isDesktop.value);
 const FILTERS: AdminFilter[] = ['pending', 'all', 'hidden'];
 
 const statusText = computed(() => {
@@ -279,12 +277,10 @@ function showNew() {
                 <q-item-section>匯出 Markdown / CSV</q-item-section>
                 <q-item-section side>即將推出</q-item-section>
               </q-item>
-              <template v-if="auth.isPastor">
-                <q-separator />
-                <q-item v-close-popup clickable @click="removeSession">
-                  <q-item-section class="text-negative">刪除場次</q-item-section>
-                </q-item>
-              </template>
+              <q-separator />
+              <q-item v-close-popup clickable @click="removeSession">
+                <q-item-section class="text-negative">刪除場次</q-item-section>
+              </q-item>
             </q-list>
           </q-menu>
         </button>
@@ -388,7 +384,7 @@ function showNew() {
             :key="p.id"
             :post="p"
             mode="admin"
-            :can-reply="auth.isPastor"
+            can-reply
             :selected="showPanel && replyId === p.id"
             @zoom="zoom(p.id)"
             @reply="openReply(p.id)"
@@ -397,7 +393,7 @@ function showNew() {
         </TransitionGroup>
       </section>
 
-      <!-- 回覆面板（≥ 1024px，牧者） -->
+      <!-- 回覆面板（≥ 1024px） -->
       <aside v-if="showPanel" class="cols__panel" aria-label="回覆">
         <ReplyEditor v-if="replyPost" :post="replyPost" autofocus @close="replyId = null" />
         <div v-else class="panel-empty">

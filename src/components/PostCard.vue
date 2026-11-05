@@ -14,7 +14,7 @@ const props = withDefaults(
     mode: 'member' | 'admin';
     /** 場次可寫入（開放中且未到自動結束） */
     writable?: boolean;
-    /** 牧者才能回覆（Q1） */
+    /** 管理端才能回覆 */
     canReply?: boolean;
     /** 回覆面板正開著這一則 */
     selected?: boolean;

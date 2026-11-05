@@ -9,6 +9,9 @@ import { useBreakpoint } from '@/composables/useBreakpoint';
 import PostCard from '@/components/PostCard.vue';
 import PostComposer from '@/components/PostComposer.vue';
 import MemberHeader from '@/components/MemberHeader.vue';
+import QrProjector from '@/components/QrProjector.vue';
+import { buildSessionUrl } from '@/utils/sessionUrl';
+import { siteUrl } from '@/utils/config';
 import { MEMBER_SORTS, SORT_LABEL } from '@/utils/sortFilter';
 import { errorMessage } from '@/utils/errors';
 import { formatHm, formatLongDate } from '@/utils/time';
@@ -22,6 +25,8 @@ const { isPhone, isDesktop } = useBreakpoint();
 
 const code = computed(() => String(route.params.code ?? '').toUpperCase());
 const composerOpen = ref(false);
+/** 全螢幕 QR：會友端也能開，方便負責投影的人員使用（AC5.12） */
+const qrOpen = ref(false);
 const scrolled = ref(false);
 const titleEl = ref<HTMLElement | null>(null);
 
@@ -87,7 +92,10 @@ function openComposer() {
 <template>
   <MemberHeader back="/" :title="s?.title ?? ''" :condensed="scrolled && !!s">
     <template v-if="s" #actions>
-      <button type="button" class="btn btn--text head__stage" @click="zoom()">投影</button>
+      <button type="button" class="btn btn--text head__action" @click="qrOpen = true">
+        QR code
+      </button>
+      <button type="button" class="btn btn--text head__action" @click="zoom()">投影</button>
     </template>
   </MemberHeader>
 
@@ -209,6 +217,14 @@ function openComposer() {
       v-model="composerOpen"
       :variant="isPhone ? 'sheet' : 'dialog'"
     />
+
+    <QrProjector
+      v-if="s && qrOpen"
+      :url="buildSessionUrl(siteUrl(), s.code)"
+      :code="s.code"
+      :title="s.title"
+      @close="qrOpen = false"
+    />
   </div>
 </template>
 
@@ -260,7 +276,7 @@ function openComposer() {
 .head {
   padding: 20px 0 16px;
 
-  &__stage {
+  &__action {
     font-size: 15px;
   }
 

@@ -79,8 +79,7 @@ onMounted(async () => {
 
       <div v-if="isMock" class="login__demo">
         <b>示範模式（假資料）</b>：任何 Email 與密碼都可以登入。<br />
-        Email 含 <code>staff</code> → 同工；含 <code>member</code> → 沒有管理權限；密碼
-        <code>wrong</code> → 帳號或密碼錯誤；其餘 → 牧者。
+        Email 含 <code>member</code> → 沒有管理權限；密碼 <code>wrong</code> → 帳號或密碼錯誤。
       </div>
       <router-link to="/" class="login__back">‹ 回會友首頁</router-link>
     </main>
