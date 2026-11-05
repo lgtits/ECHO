@@ -1,0 +1,150 @@
+<script setup lang="ts">
+// A1 登入（ux.md A1；AC5.1）。不提供註冊。
+import { onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { services } from '@/services';
+import { useAuthStore } from '@/stores/auth';
+import { errorMessage } from '@/utils/errors';
+
+const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
+
+const email = ref('');
+const password = ref('');
+const loading = ref(false);
+const error = ref('');
+const isMock = services.source === 'mock';
+
+function target() {
+  const r = route.query.redirect;
+  return typeof r === 'string' && r.startsWith('/admin') ? r : '/admin';
+}
+
+async function submit() {
+  if (loading.value) return;
+  loading.value = true;
+  error.value = '';
+  try {
+    await auth.signIn(email.value, password.value);
+    await router.replace(target());
+  } catch (e) {
+    error.value = errorMessage(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(async () => {
+  await auth.ensure();
+  if (auth.isStaff) await router.replace(target());
+});
+</script>
+
+<template>
+  <div class="login">
+    <div class="login__strip" aria-hidden="true" />
+    <main class="login__box">
+      <h1 class="login__brand">ECHO <span>管理</span></h1>
+      <form class="login__form" @submit.prevent="submit">
+        <div class="field">
+          <label for="email" class="field__label">Email</label>
+          <input
+            id="email"
+            v-model="email"
+            class="input"
+            type="email"
+            autocomplete="username"
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="password" class="field__label">密碼</label>
+          <input
+            id="password"
+            v-model="password"
+            class="input"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+        <p v-if="error" class="field__error" role="alert">{{ error }}</p>
+        <button type="submit" class="btn btn--primary btn--block btn--lg" :disabled="loading">
+          <q-spinner v-if="loading" size="18px" />
+          登入
+        </button>
+      </form>
+      <p class="login__note">忘記密碼請聯絡系統管理者。</p>
+
+      <div v-if="isMock" class="login__demo">
+        <b>示範模式（假資料）</b>：任何 Email 與密碼都可以登入。<br />
+        Email 含 <code>staff</code> → 同工；含 <code>member</code> → 沒有管理權限；密碼
+        <code>wrong</code> → 帳號或密碼錯誤；其餘 → 牧者。
+      </div>
+      <router-link to="/" class="login__back">‹ 回會友首頁</router-link>
+    </main>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--echo-bg);
+
+  &__strip {
+    height: 3px;
+    background: var(--echo-primary);
+  }
+
+  &__box {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 56px 20px 40px;
+  }
+
+  &__brand {
+    margin: 0 0 28px;
+    font-size: 20px;
+    font-weight: 600;
+
+    span {
+      color: var(--echo-primary);
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__note {
+    margin: 16px 0 0;
+    font-size: 14px;
+    color: var(--echo-muted);
+  }
+
+  &__demo {
+    margin-top: 28px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    background: var(--echo-subtle);
+    font-size: 14px;
+    line-height: 1.7;
+
+    code {
+      font-size: 13px;
+    }
+  }
+
+  &__back {
+    display: inline-block;
+    margin-top: 24px;
+    font-size: 14px;
+    color: var(--echo-muted);
+    text-decoration: none;
+  }
+}
+</style>

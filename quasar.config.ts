@@ -1,0 +1,265 @@
+// Configuration for your app
+// https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
+
+import { copyFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { defineConfig } from '#q-app';
+
+// 網站所在路徑：GitHub Pages 專案網址為 '/echo/'，自訂網域為 '/'（plan §7）
+// 接受 'echo'、'/echo'、'/echo/' 等寫法，統一成 '/echo/'。
+// （Windows Git Bash 會把 '/echo/' 轉成 Windows 路徑，本機請寫 BASE_PATH=echo）
+const baseSegment = (process.env.BASE_PATH ?? '').replace(/^\/+|\/+$/g, '');
+const basePath = baseSegment ? `/${baseSegment}/` : '/';
+
+export default defineConfig((/* ctx */) => {
+  return {
+    // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
+    // preFetch: true,
+
+    // app boot file (/src/boot)
+    // --> boot files are part of "main.js"
+    // https://v2.quasar.dev/quasar-cli-vite/boot-files
+    boot: [],
+
+    // index.html 以 <%= publicPath %> 引用 favicon，深層網址（/s/XXXX）才不會找錯路徑
+    htmlVariables: {
+      publicPath: basePath,
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
+    css: ['app.scss'],
+
+    // https://github.com/quasarframework/quasar/tree/dev/extras
+    extras: [
+      // 'ionicons-v4',
+      // 'mdi-v7',
+      // 'fontawesome-v7',
+      // 'eva-icons',
+      // 'themify',
+      // 'line-awesome',
+
+      'material-icons',
+    ],
+
+    // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
+    build: {
+      target: {
+        // browser: 'baseline-widely-available',
+        // node: 'node22'
+      },
+
+      typescript: {
+        strict: true,
+        vueShim: true,
+        // extendTsConfig (tsConfig) {}
+      },
+
+      // https://v2.quasar.dev/quasar-cli-vite/page-routing-with-vue-router#filename-based-routing
+      // filenameBasedRouting: true,
+
+      vueRouterMode: 'history',
+      vueRouterBase: basePath,
+      publicPath: basePath,
+      // define: {},
+      // defineEnv: {}
+      // ignorePublicFolder: true,
+      // minify: false,
+      // distDir
+
+      // GitHub Pages 沒有 SPA fallback：把 index.html 複製成 404.html，
+      // 讓直接開啟 /s/K7PM2X 這類深層網址時也能載入 App（plan §7）
+      async afterBuild({ quasarConf }) {
+        const distDir = quasarConf.build?.distDir ?? 'dist/spa';
+        await copyFile(join(distDir, 'index.html'), join(distDir, '404.html'));
+      },
+
+      // extendViteConf (viteConf) {},
+      // viteVuePluginOptions: {},
+
+      // to write components with JSX/TSX:
+      // https://v2.quasar.dev/quasar-cli-vite/handling-vite#jsx-tsx
+      // vueJsx: true,
+
+      vitePlugins: [
+        [
+          'vite-plugin-checker',
+          {
+            vueTsc: true,
+            eslint: {
+              lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
+              useFlatConfig: true,
+            },
+          },
+          { server: false },
+        ],
+      ],
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
+    devServer: {
+      // vueDevtools: true,
+      // https: true,
+      open: false,
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
+    framework: {
+      config: {
+        // snackbar（ux.md §6）：深色底、底部、無陰影
+        notify: { position: 'bottom', timeout: 2500, color: 'dark', textColor: 'white' },
+      },
+
+      // iconSet: 'material-icons', // Quasar icon set
+      lang: 'zh-TW',
+
+      // For special cases outside of where the auto-import strategy can have an impact
+      // (like functional components as one of the examples),
+      // you can manually specify Quasar components/directives to be available everywhere:
+      //
+      // components: [],
+      // directives: [],
+
+      // Quasar plugins
+      plugins: ['Notify', 'Dialog'],
+    },
+
+    // animations: 'all', // --- includes all animations
+    // https://v2.quasar.dev/options/animations
+    animations: [],
+
+    // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
+    // sourceFiles: {
+    //   rootComponent: 'src/App.vue',
+    //   router: 'src/router/index',
+    //   store: 'src/store/index',
+    //   pwaRegisterServiceWorker: 'src-pwa/register-sw',
+    //   pwaServiceWorker: 'src-pwa/sw/custom-sw',
+    //   pwaManifestFile: 'src-pwa/manifest.json',
+    //   electronMain: 'src-electron/electron-main',
+    //   electronPreload: 'src-electron/electron-preload'
+    //   bexManifestFile: 'src-bex/manifest.json
+    // },
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-ssr/configuring-ssr
+    ssr: {
+      /**
+       * The default port that the production server should use
+       * (gets superseded if process.env.PORT is specified at runtime)
+       */
+      prodPort: 3000,
+      middlewares: [
+        'render', // keep this as last one
+      ],
+
+      // clientSideRenderingRoutes: [],
+      // noPreloadTagRoutes: [],
+      // manualStoreSerialization: true,
+      // manualStoreSsrContextInjection: true,
+      // manualStoreHydration: true,
+      // manualPostHydrationTrigger: true,
+      // prodScriptNamedExport: false,
+
+      // extendSSRPackageJson (pkgJson) {},
+      // extendSSRManifestJson (json) {},
+      // extendSSRWebserverConf (rolldownConf) {},
+
+      // pwa: true,
+      // pwaOfflineHtmlFilename: 'offline.html', // do NOT use index.html as name!
+      // extendSSRGenerateSWOptions (cfg) {},
+      // extendSSRInjectManifestOptions (cfg) {},
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-ssg/configuring-ssg
+    ssg: {
+      // onSsgRendererError: 'abort',
+      // ssgRendererConcurrency: 1,
+      // ssgRendererRetryCount: 0,
+      // ssgRendererRetryDelay: 1000,
+      // ssgRendererDirectoryIndexes: true,
+      // error404HtmlFilename: '404.html',
+      // clientSideRenderingHtmlFilename: 'csr.html',
+      // clientSideRenderingRoutes: [],
+      // noPreloadTagRoutes: []
+      // extendSSGRendererConf (rolldownConf) {},
+      // extendSSGManifestJson (json) {},
+      // manualStoreSerialization: true,
+      // manualStoreSsrContextInjection: true,
+      // manualStoreHydration: true,
+      // manualPostHydrationTrigger: true,
+      // pwa: true,
+      // pwaOfflineHtmlFilename: 'offline.html',
+      // extendSSGGenerateSWOptions (cfg) {},
+      // extendSSGInjectManifestOptions (cfg) {},
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
+    pwa: {
+      workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
+      // swFilename: 'sw.js',
+      // manifestFilename: 'manifest.json',
+      // extendPWAManifestJson (json) {},
+      // useCredentialsForManifestTag: true,
+      // injectPWAMetaTags: false,
+      // extendPWACustomSWConf (rolldownConf) {},
+      // extendPWAGenerateSWOptions (cfg) {},
+      // extendPWAInjectManifestOptions (cfg) {},
+      // extendPWASwTsConfig (tsConfig) {}
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-cordova-apps/configuring-cordova
+    cordova: {},
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-capacitor-apps/configuring-capacitor
+    capacitor: {
+      hideSplashscreen: true,
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/configuring-electron
+    electron: {
+      // extendElectronMainConf (rolldownConf) {},
+      // extendElectronPreloadConf (rolldownConf) {},
+      // extendElectronPackageJson (pkgJson) {},
+
+      // Electron preload scripts (if any) from /src-electron, WITHOUT file extension
+      preloadScripts: ['electron-preload'],
+
+      // specify the debugging port to use for the Electron app when running in development mode
+      inspectPort: 5858,
+
+      bundler: 'packager', // 'packager' or 'builder'
+
+      packager: {
+        // https://github.com/electron-userland/electron-packager/blob/master/docs/api.md#options
+        // OS X / Mac App Store
+        // appBundleId: '',
+        // appCategoryType: '',
+        // osxSign: '',
+        // protocol: 'myapp://path',
+        // Windows only
+        // win32metadata: { ... }
+      },
+
+      builder: {
+        // https://www.electron.build/configuration
+
+        appId: 'echo',
+      },
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-browser-extensions/configuring-bex
+    bex: {
+      // extendBexScriptsConf (rolldownConf) {},
+      // extendBexManifestJson (json) {},
+
+      /**
+       * The list of extra scripts (js/ts) not in your bex manifest that you want to
+       * compile and use in your browser extension. Maybe dynamic use them?
+       *
+       * Each entry in the list should be a relative filename to /src-bex/
+       *
+       * @example [ 'my-script.ts', 'sub-folder/my-other-script.js' ]
+       */
+      extraScripts: [],
+    },
+  };
+});

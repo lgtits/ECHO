@@ -1,0 +1,762 @@
+<script setup lang="ts">
+// A4 場次管理（ux.md A4、A3 ③、A5、A6；AC5.3–5.9、AC6.x、AC7.x）。
+// ≥ 1024px 左右兩欄（列表＋回覆面板）；以下單欄，回覆開對話框。
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { copyToClipboard, useQuasar } from 'quasar';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+import { useBoardStore } from '@/stores/board';
+import { useSessionsStore } from '@/stores/sessions';
+import { useBreakpoint } from '@/composables/useBreakpoint';
+import PostCard from '@/components/PostCard.vue';
+import ReplyEditor from '@/components/ReplyEditor.vue';
+import QrShareDialog from '@/components/QrShareDialog.vue';
+import QrImage from '@/components/QrImage.vue';
+import QrProjector from '@/components/QrProjector.vue';
+import { ADMIN_SORTS, FILTER_LABEL, SORT_LABEL, type AdminFilter } from '@/utils/sortFilter';
+import { buildSessionUrl } from '@/utils/sessionUrl';
+import { displayUrl, siteUrl } from '@/utils/config';
+import { errorMessage } from '@/utils/errors';
+import { formatHm, formatShortDate, parseDate } from '@/utils/time';
+
+const $q = useQuasar();
+const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
+const board = useBoardStore();
+const sessions = useSessionsStore();
+const { isDesktop } = useBreakpoint();
+
+const id = computed(() => String(route.params.id ?? ''));
+const s = computed(() => board.session);
+const url = computed(() => (s.value ? buildSessionUrl(siteUrl(), s.value.code) : ''));
+
+const shareOpen = ref(false);
+const projecting = ref(false);
+const statusBusy = ref(false);
+const replyId = ref<string | null>(null);
+const replyDialog = ref(false);
+const heroHidden = ref(false);
+
+const showHero = computed(() => route.query.created === '1' && !heroHidden.value);
+const replyPost = computed(() => (replyId.value ? (board.get(replyId.value) ?? null) : null));
+const showPanel = computed(() => isDesktop.value && auth.isPastor);
+const FILTERS: AdminFilter[] = ['pending', 'all', 'hidden'];
+
+const statusText = computed(() => {
+  const x = s.value;
+  if (!x) return '';
+  if (x.status === 'draft') return '草稿';
+  if (!board.writable) return '已結束 · 仍可補充回覆';
+  return x.autoCloseAt ? `開放中 · ${formatHm(new Date(x.autoCloseAt))} 自動結束` : '開放中';
+});
+const dotClass = computed(() => {
+  if (s.value?.status === 'draft') return 'status-dot--draft';
+  return board.writable ? 'status-dot--open' : '';
+});
+
+async function load() {
+  replyId.value = null;
+  heroHidden.value = false;
+  await board.open({ id: id.value }, 'admin');
+}
+
+watch(id, load);
+onMounted(() => {
+  void load();
+  window.addEventListener('scroll', onScroll, { passive: true });
+});
+onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
+
+function onScroll() {
+  board.atTop = window.scrollY < 160;
+}
+
+// ── 場次狀態
+
+async function setStatus(next: 'open' | 'closed') {
+  if (!s.value) return;
+  statusBusy.value = true;
+  try {
+    board.setSession(await sessions.setStatus(s.value.id, next));
+    $q.notify({ message: next === 'open' ? '已開放留言' : '已結束留言' });
+  } catch (e) {
+    $q.notify({ message: errorMessage(e) });
+  } finally {
+    statusBusy.value = false;
+  }
+}
+
+/** 「結束留言」需要確認；「開放留言」不需要（ux.md A4） */
+function endSession() {
+  $q.dialog({
+    title: '結束留言？',
+    message: '結束後會友只能瀏覽，不能再留言或附議。你之後仍可補充回覆，也可以重新開放。',
+    cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
+    ok: { label: '結束留言', flat: true, noCaps: true, color: 'negative' },
+  }).onOk(() => void setStatus('closed'));
+}
+
+function autoCloseDialog() {
+  if (!s.value) return;
+  const current = s.value.autoCloseAt ? formatHm(new Date(s.value.autoCloseAt)) : '';
+  const items = [{ label: '不自動結束', value: '' }];
+  for (let i = 24; i < 96; i++) {
+    const t = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`;
+    items.push({ label: t, value: t });
+  }
+  $q.dialog({
+    title: '設定自動結束',
+    message: '到時間後自動結束留言（講道當天）。',
+    options: { type: 'radio', model: current, items },
+    cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
+    ok: { label: '儲存', flat: true, noCaps: true, color: 'primary' },
+  }).onOk((value: string) => void saveAutoClose(value));
+}
+
+async function saveAutoClose(value: string) {
+  if (!s.value) return;
+  let iso: string | null = null;
+  if (value) {
+    const d = parseDate(s.value.sermonDate);
+    const [h, m] = value.split(':').map(Number);
+    d.setHours(h ?? 0, m ?? 0, 0, 0);
+    iso = d.toISOString();
+  }
+  try {
+    board.setSession(await sessions.setAutoClose(s.value.id, iso));
+    $q.notify({ message: iso ? `將於 ${value} 自動結束` : '已取消自動結束' });
+  } catch (e) {
+    $q.notify({ message: errorMessage(e) });
+  }
+}
+
+function removeSession() {
+  if (!s.value) return;
+  const title = s.value.title;
+  $q.dialog({
+    title: '刪除場次',
+    message: `場次與所有留言、回覆都會永久刪除，無法復原。請輸入場次標題「${title}」確認。`,
+    prompt: { model: '', type: 'text', isValid: (v: string) => v.trim() === title },
+    cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
+    ok: { label: '永久刪除', flat: true, noCaps: true, color: 'negative' },
+  }).onOk(() => void doRemove());
+}
+
+async function doRemove() {
+  try {
+    await sessions.remove(id.value);
+    board.close();
+    $q.notify({ message: '已刪除場次' });
+    await router.push('/admin');
+  } catch (e) {
+    $q.notify({ message: errorMessage(e) });
+  }
+}
+
+function preview() {
+  if (s.value) window.open(router.resolve(`/s/${s.value.code}`).href, '_blank', 'noopener');
+}
+
+async function copyLink() {
+  try {
+    await copyToClipboard(url.value);
+    $q.notify({ message: '已複製連結' });
+  } catch {
+    $q.notify({ message: '無法複製，請手動選取網址' });
+  }
+}
+
+// ── 留言操作
+
+function openReply(postId: string) {
+  replyId.value = postId;
+  if (!showPanel.value) replyDialog.value = true;
+}
+
+/** 隱藏不跳確認，改用 5 秒內可復原（AC7.3） */
+async function hide(postId: string, hidden: boolean) {
+  try {
+    await board.setHidden(postId, hidden);
+    if (replyId.value === postId && hidden) replyId.value = null;
+    $q.notify({
+      message: hidden ? '已隱藏' : '已取消隱藏',
+      timeout: 5000,
+      actions: hidden
+        ? [
+            {
+              label: '復原',
+              color: 'white',
+              noCaps: true,
+              handler: () => void board.setHidden(postId, false),
+            },
+          ]
+        : [],
+    });
+  } catch (e) {
+    $q.notify({ message: errorMessage(e) });
+  }
+}
+
+function zoom(postId: string) {
+  board.startStage();
+  void router.push({ path: `/admin/sessions/${id.value}/stage`, query: { post: postId } });
+}
+
+function showNew() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  board.flushPending();
+}
+</script>
+
+<template>
+  <main v-if="board.status === 'not_found'" class="missing">
+    <h1>找不到這個場次</h1>
+    <p class="text-muted">可能已被刪除。</p>
+    <router-link to="/admin" class="btn btn--secondary">回場次列表</router-link>
+  </main>
+
+  <div v-else class="manage">
+    <div v-if="board.connection === 'disconnected'" class="conn-bar" role="status">
+      連線中斷，正在重新連線…
+    </div>
+
+    <!-- 標題列 -->
+    <header class="bar">
+      <div class="bar__info">
+        <template v-if="s">
+          <h1 class="bar__title">{{ s.title }}</h1>
+          <span class="bar__sub">
+            {{ formatShortDate(s.sermonDate)
+            }}<template v-if="s.speaker"> · {{ s.speaker }}</template> · 場次碼 {{ s.code }}
+          </span>
+        </template>
+        <q-skeleton v-else type="text" width="240px" height="40px" />
+      </div>
+      <div v-if="s" class="bar__status">
+        <span class="status-dot" :class="dotClass" />
+        <span>{{ statusText }}</span>
+        <button
+          v-if="board.writable"
+          type="button"
+          class="btn btn--text bar__auto"
+          @click="autoCloseDialog"
+        >
+          {{ s.autoCloseAt ? '修改' : '設定自動結束' }}
+        </button>
+      </div>
+      <div v-if="s" class="bar__actions">
+        <button type="button" class="btn btn--secondary" @click="shareOpen = true">分享 QR</button>
+        <button
+          v-if="board.writable"
+          type="button"
+          class="btn btn--secondary"
+          :disabled="statusBusy"
+          @click="endSession"
+        >
+          結束留言
+        </button>
+        <button
+          v-else
+          type="button"
+          class="btn btn--secondary"
+          :disabled="statusBusy"
+          @click="setStatus('open')"
+        >
+          {{ s.status === 'draft' ? '開放留言' : '重新開放' }}
+        </button>
+        <button type="button" class="btn btn--secondary bar__more" aria-label="更多操作">
+          ⋯
+          <q-menu anchor="bottom right" self="top right">
+            <q-list style="min-width: 200px">
+              <q-item v-close-popup clickable :to="`/admin/sessions/${s.id}/edit`">
+                <q-item-section>編輯場次資訊</q-item-section>
+              </q-item>
+              <q-item v-close-popup clickable @click="preview">
+                <q-item-section>以會友身分預覽</q-item-section>
+              </q-item>
+              <q-item disable>
+                <q-item-section>匯出 Markdown / CSV</q-item-section>
+                <q-item-section side>即將推出</q-item-section>
+              </q-item>
+              <template v-if="auth.isPastor">
+                <q-separator />
+                <q-item v-close-popup clickable @click="removeSession">
+                  <q-item-section class="text-negative">刪除場次</q-item-section>
+                </q-item>
+              </template>
+            </q-list>
+          </q-menu>
+        </button>
+      </div>
+    </header>
+
+    <!-- 建立後：最上方先顯示 QR（AC5.2；ux.md A3 ③） -->
+    <section v-if="s && showHero" class="hero" aria-label="分享 QR">
+      <div class="hero__qr"><QrImage :text="url" /></div>
+      <div class="hero__text">
+        <p class="hero__lead">
+          {{ s.status === 'draft' ? '已存成草稿' : '場次已建立，會友現在可以掃碼留言' }}
+        </p>
+        <p class="hero__code">{{ s.code }}</p>
+        <p class="hero__url">{{ displayUrl(url) }}</p>
+        <div class="hero__actions">
+          <button type="button" class="btn btn--primary" @click="projecting = true">
+            全螢幕投影 QR
+          </button>
+          <button type="button" class="btn btn--secondary" @click="copyLink">複製連結</button>
+          <button type="button" class="btn btn--text btn--muted" @click="heroHidden = true">
+            收起
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 草稿提醒（ux.md A3 ③'） -->
+    <div v-if="s?.status === 'draft'" class="draft">
+      <span>這是草稿：會友現在掃碼會看到「找不到此場次」。</span>
+      <button
+        type="button"
+        class="btn btn--primary"
+        :disabled="statusBusy"
+        @click="setStatus('open')"
+      >
+        開放留言
+      </button>
+    </div>
+
+    <div class="cols">
+      <section class="cols__list">
+        <nav class="tabs" aria-label="篩選留言">
+          <button
+            v-for="f in FILTERS"
+            :key="f"
+            type="button"
+            class="tabs__tab"
+            :class="{ 'tabs__tab--on': board.filter === f }"
+            :aria-pressed="board.filter === f"
+            @click="board.filter = f"
+          >
+            {{ FILTER_LABEL[f] }} <span class="tabs__n">{{ board.counts[f] }}</span>
+          </button>
+          <button type="button" class="btn btn--text tabs__sort" aria-label="排序方式">
+            依{{ SORT_LABEL[board.sort].replace('最多', '') }} ▾
+            <q-menu anchor="bottom right" self="top right">
+              <q-list style="min-width: 140px">
+                <q-item
+                  v-for="opt in ADMIN_SORTS"
+                  :key="opt"
+                  v-close-popup
+                  clickable
+                  :active="board.sort === opt"
+                  active-class="text-primary"
+                  @click="board.sort = opt"
+                >
+                  <q-item-section>{{ SORT_LABEL[opt] }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </button>
+        </nav>
+
+        <button v-if="board.orderStale" type="button" class="stale" @click="board.refreshOrder()">
+          排序已變動，點此更新
+        </button>
+
+        <div v-if="board.status === 'loading'" class="list">
+          <div v-for="i in 4" :key="i" class="skeleton">
+            <q-skeleton type="text" width="30%" />
+            <q-skeleton type="text" />
+          </div>
+        </div>
+
+        <p v-else-if="!board.visible.length" class="empty">
+          {{
+            board.filter === 'pending'
+              ? board.counts.all
+                ? '所有留言都回應了。'
+                : '還沒有留言。'
+              : board.filter === 'hidden'
+                ? '沒有隱藏的留言。'
+                : '還沒有留言。'
+          }}
+        </p>
+
+        <TransitionGroup v-else name="fade" tag="div" class="list">
+          <PostCard
+            v-for="p in board.visible"
+            :key="p.id"
+            :post="p"
+            mode="admin"
+            :can-reply="auth.isPastor"
+            :selected="showPanel && replyId === p.id"
+            @zoom="zoom(p.id)"
+            @reply="openReply(p.id)"
+            @hide="hide(p.id, $event)"
+          />
+        </TransitionGroup>
+      </section>
+
+      <!-- 回覆面板（≥ 1024px，牧者） -->
+      <aside v-if="showPanel" class="cols__panel" aria-label="回覆">
+        <ReplyEditor v-if="replyPost" :post="replyPost" autofocus @close="replyId = null" />
+        <div v-else class="panel-empty">
+          <p class="panel-empty__title">回覆</p>
+          <p class="text-muted">
+            點留言右側的「回覆」開始回覆。回覆會顯示在該則留言下方，會友即時看得到。
+          </p>
+        </div>
+      </aside>
+    </div>
+
+    <button v-if="board.newCount > 0" type="button" class="pill" @click="showNew">
+      ↑ {{ board.newCount }} 則新留言
+    </button>
+    <div class="sr-only" aria-live="polite">
+      {{ board.newCount > 0 ? `有 ${board.newCount} 則新留言` : '' }}
+    </div>
+
+    <!-- 手機、平板：回覆對話框 -->
+    <q-dialog
+      v-if="!showPanel"
+      v-model="replyDialog"
+      :maximized="$q.screen.lt.sm"
+      @hide="replyId = null"
+    >
+      <div class="reply-dialog">
+        <ReplyEditor
+          v-if="replyPost"
+          :post="replyPost"
+          autofocus
+          @sent="replyDialog = false"
+          @close="replyDialog = false"
+        />
+      </div>
+    </q-dialog>
+
+    <QrShareDialog
+      v-if="s"
+      v-model="shareOpen"
+      :session="s"
+      :opening="statusBusy"
+      @open-session="setStatus('open')"
+    />
+    <QrProjector
+      v-if="s && projecting"
+      :url="url"
+      :code="s.code"
+      :title="s.title"
+      @close="projecting = false"
+    />
+
+    <router-view />
+  </div>
+</template>
+
+<style scoped lang="scss">
+.missing {
+  padding: 48px 24px;
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 600;
+  }
+}
+
+.conn-bar {
+  position: sticky;
+  top: 3px;
+  z-index: 15;
+  padding: 10px 20px;
+  font-size: 14px;
+  text-align: center;
+  color: var(--echo-muted);
+  background: var(--echo-subtle);
+  border-bottom: 1px solid var(--echo-line);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  min-height: 64px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--echo-line);
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  &__sub {
+    font-size: 13px;
+    color: var(--echo-muted);
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    flex: 1 1 100%;
+  }
+
+  &__auto {
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 14px;
+    color: var(--echo-primary);
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    flex: 1 1 100%;
+
+    .btn {
+      min-height: 40px;
+      padding: 0 14px;
+      font-size: 14px;
+    }
+
+    .btn:not(.bar__more) {
+      flex: 1;
+    }
+  }
+
+  &__more {
+    width: 44px;
+    padding: 0 !important;
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 600px) {
+  .bar {
+    &__info {
+      flex: 0 1 auto;
+    }
+
+    &__status {
+      flex: 0 0 auto;
+    }
+
+    &__actions {
+      flex: 0 0 auto;
+      margin-left: auto;
+
+      .btn:not(.bar__more) {
+        flex: 0 0 auto;
+      }
+    }
+  }
+}
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px 32px;
+  padding: 24px 20px;
+  border-bottom: 1px solid var(--echo-line);
+
+  &__qr {
+    width: 168px;
+    flex-shrink: 0;
+  }
+
+  &__text p {
+    margin: 0;
+  }
+
+  &__lead {
+    font-size: 15px;
+    color: var(--echo-muted);
+  }
+
+  &__code {
+    margin-top: 4px !important;
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__url {
+    font-size: 14px;
+    color: var(--echo-muted);
+    overflow-wrap: anywhere;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+}
+
+.draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--echo-line);
+  background: var(--echo-subtle);
+  font-size: 15px;
+
+  span {
+    flex: 1 1 240px;
+  }
+}
+
+.cols {
+  display: flex;
+  align-items: flex-start;
+
+  &__list {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__panel {
+    position: sticky;
+    top: 3px;
+    width: 340px;
+    flex-shrink: 0;
+    height: calc(100vh - 3px);
+    padding: 24px;
+    border-left: 1px solid var(--echo-line);
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 1280px) {
+  .cols__panel {
+    width: 380px;
+  }
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--echo-line);
+  overflow-x: auto;
+
+  &__tab {
+    min-height: 48px;
+    margin-bottom: -1px;
+    padding: 0;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    font-size: 15px;
+    color: var(--echo-muted);
+    white-space: nowrap;
+    cursor: pointer;
+
+    &--on {
+      color: var(--echo-text);
+      font-weight: 600;
+      border-bottom-color: var(--echo-text);
+    }
+  }
+
+  &__n {
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__sort {
+    margin-left: auto;
+    margin-right: -12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+}
+
+.list :deep(.post) {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.stale {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 1px solid var(--echo-line);
+  background: var(--echo-subtle);
+  color: var(--echo-primary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.skeleton {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--echo-line);
+}
+
+.empty {
+  padding: 48px 20px;
+  color: var(--echo-muted);
+}
+
+.panel-empty {
+  &__title {
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+
+  p {
+    font-size: 15px;
+  }
+}
+
+.reply-dialog {
+  width: 560px;
+  max-width: 100vw;
+  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
+  background: var(--echo-bg);
+  border-radius: 8px;
+}
+
+.pill {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  z-index: 26;
+  transform: translateX(-50%);
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--echo-border);
+  border-radius: 999px;
+  background: var(--echo-bg);
+  color: var(--echo-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fade-enter-active {
+  transition: opacity 0.4s ease;
+}
+
+.fade-enter-from {
+  opacity: 0;
+}
+</style>

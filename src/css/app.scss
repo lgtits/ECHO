@@ -1,0 +1,245 @@
+// 設計 token：specs/001-sermon-qa/ux.md §7
+:root {
+  --echo-bg: #ffffff;
+  --echo-subtle: #f5f5f2;
+  --echo-stage: #efefea;
+  --echo-line: #e6e6e1;
+  --echo-border: #d9d9d3;
+  --echo-text: #1e1e1c;
+  --echo-muted: #6b6b66;
+  --echo-primary: #4f7a63;
+  --echo-danger: #b3261e;
+  --echo-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.07);
+  --echo-content-max: 720px;
+}
+
+body {
+  background: var(--echo-bg);
+  color: var(--echo-text);
+  font-size: 17px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  -webkit-text-size-adjust: 100%;
+}
+
+.text-muted {
+  color: var(--echo-muted);
+}
+
+// ── 基礎元素（ux.md §7：白底、黑字、一個綠色；陰影只留給講台小卡）
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--echo-primary);
+  outline-offset: 2px;
+}
+
+// 關掉 Quasar 的 ripple 與預設陰影
+.q-ripple {
+  display: none !important;
+}
+
+.q-dialog__inner > div {
+  box-shadow: none;
+}
+
+.q-notification {
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 15px;
+}
+
+// ── 按鈕：主要（綠底白字）、次要（白底灰框）、文字
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 15px;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  &--primary {
+    background: var(--echo-primary);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  &--secondary {
+    background: var(--echo-bg);
+    border-color: var(--echo-border);
+    color: var(--echo-text);
+  }
+
+  &--text {
+    padding: 0 12px;
+    color: var(--echo-text);
+  }
+
+  &--muted {
+    color: var(--echo-muted);
+  }
+
+  &--danger {
+    color: var(--echo-danger);
+  }
+
+  &--block {
+    width: 100%;
+  }
+
+  &--lg {
+    min-height: 52px;
+    font-size: 17px;
+  }
+}
+
+// ── 表單
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__label {
+    font-size: 14px;
+    color: var(--echo-muted);
+  }
+
+  &__hint {
+    font-size: 13px;
+    color: var(--echo-muted);
+  }
+
+  &__error {
+    font-size: 14px;
+    color: var(--echo-danger);
+  }
+}
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--echo-border);
+  border-radius: 8px;
+  background: var(--echo-bg);
+  color: var(--echo-text);
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.6;
+
+  &:focus {
+    outline: none;
+    border-color: var(--echo-primary);
+  }
+
+  &--invalid {
+    border-color: var(--echo-danger);
+  }
+}
+
+textarea.input {
+  resize: vertical;
+  min-height: 120px;
+}
+
+// ── 版面
+
+.page {
+  width: 100%;
+  max-width: var(--echo-content-max);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.section-label {
+  margin: 0;
+  padding: 24px 0 8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--echo-muted);
+}
+
+.hairline {
+  border: 0;
+  border-top: 1px solid var(--echo-line);
+  margin: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #b5b5ae;
+  flex-shrink: 0;
+
+  &--open {
+    background: var(--echo-primary);
+  }
+
+  &--draft {
+    background: transparent;
+    border: 1px solid var(--echo-muted);
+  }
+}
+
+// 右側滑出面板（ux.md A3）貼齊視窗上下緣
+.q-dialog__inner--right.q-dialog__inner--minimized {
+  padding: 0;
+}
+
+.q-dialog__inner--right > div {
+  border-radius: 0 !important;
+  max-height: 100vh !important;
+  height: 100vh;
+  height: 100dvh;
+}
+
+// 手機、平板的會友頁底部有固定輸入列：snackbar 往上移，不要蓋住它
+@media (max-width: 1023px) {
+  .q-notifications__list--bottom {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+}

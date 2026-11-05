@@ -1,0 +1,111 @@
+# 任務清單：主日講道 QA 留言板
+
+- **對應**：[spec.md](./spec.md)、[plan.md](./plan.md)
+- 標記：`[ ]` 未開始、`[~]` 進行中、`[x]` 完成；`👤` 表示需要你本人操作（帳號、後台設定）。
+- 每個 Phase 結束都是一個檢查點：驗收通過才進入下一階段。
+- **開發順序：UI 先行**（spec D8、plan §6.1）。Phase 1 以假資料做完所有畫面；Phase 2 建資料庫與權限；Phase 3 把 services 換成 Supabase 實作。
+
+## Phase 0 — 專案基礎
+
+- [x] **T001** `git init`、`.gitignore`、`.editorconfig`（GitHub repo 延後到 T004）
+- [x] **T002** 以 Quasar CLI 建立專案（Vite、TypeScript、Pinia、ESLint + Prettier、Vitest）
+- [x] **T003** 設定 history 路由；以 `BASE_PATH` 設定 `publicPath`；注入 `QCLI_SUPABASE_*`、`QCLI_SITE_URL` 環境變數；首頁顯示 placeholder（plan §7）
+- [x] **T008** 設計 token（草地色票、字級、Quasar 品牌色）與 `MemberLayout` / `AdminLayout` 空殼（ux.md §1.3, §7）
+- [ ] **T004** GitHub Actions `deploy.yml`：push main → build → 複製 `404.html` → GitHub Pages；實測直接開深層網址（`/s/TEST01`）可正常顯示。可先部署 Phase 1 的 UI 原型供手機走查 `👤`（建立 repo、開啟 Pages）
+- [ ] **T009** 綁定教會子網域（DNS CNAME、GitHub 網域驗證、Enforce HTTPS、Supabase URL 設定），在 GitHub Pages 驗收通過後、正式使用前進行 `👤`（plan §7.2）
+
+**檢查點 0**：本機可啟動，兩種版型可切換。
+
+## Phase 1 — UI 原型（假資料，不接後端）
+
+> 所有畫面與互動都在這個階段做完；資料來自 `services/mock/`（plan §6.1）。
+
+**基礎**
+
+- [x] **T100** `types/models.ts` 領域模型；`services/types.ts` 服務介面；`services/mock/` 記憶體假資料（多場次、多則留言與回覆、模擬延遲）；`services/index.ts` 依 `QCLI_DATA_SOURCE` 選實作
+- [x] **T101** mock 即時事件：`subscribeSession` 以計時器模擬新留言、附議變動、斷線與重連（AC4.1–4.3 的畫面行為）
+- [x] **T102** mock 身分：會友匿名 uid、管理者假登入（含 `staff` 的 Email 視為同工）、「重設示範資料」
+- [x] **T021** `utils/sortFilter.ts` + Vitest（AC3.3, AC6.1）
+- [x] **T103** `utils/time.ts` 相對時間 / `HH:mm` / `M/D HH:mm` + Vitest（ux.md §6.7）
+
+**會友端（US1–US4、US8、US9）**
+
+- [x] **T022** `stores/board.ts`：載入、排序、篩選、樂觀更新附議、合併即時事件
+- [x] **T023** `IndexPage`（M1）：輸入場次碼（AC1.5）、進行中與過去的場次、載入更多（AC8.4）
+- [x] **T024** `BoardPage`（M2）：場次資訊、標題收合、狀態處理（AC1.1–1.3）、M4 所有特殊狀態（骨架、空狀態、斷線、已結束、自動結束倒數）
+- [x] **T024a** `/now` 固定入口：導向最新開放中的場次，沒有時回首頁並提示（AC1.7）
+- [x] **T025** `PostComposer`（M3）：手機底部面板 / 平板對話框 / 電腦直接展開、暱稱記憶、草稿暫存、錯誤訊息（AC2.1–2.3）
+- [x] **T026** `PostCard`（member 模式，預留 admin 模式）：附議、已回應、回覆收合、所有狀態（AC3.1, 6.4；ux.md §5）。2026-11-02 依 D9 拿掉會友刪除；2026-11-03 依 D11 拿掉「我的留言」
+- [x] **T029** 即時更新不跳動：`NewPostsPill`、熱門排序不即時重排、斷線提示（ux.md §6）
+- [x] **T039** 共用 `StageView` / `StageCard`：小卡、不顯示暱稱、上一則/下一則、鍵盤、全螢幕、即時更新（AC9.1–9.5；ux.md A7）
+- [x] **T109** `MemberHeader` 會友端頁首：白底固定、「‹ ECHO」回首頁、右側「投影」、捲動後顯示場次標題（ux.md §1.3，2026-11-03）
+- [x] **T039a** 會友端放大：留言列「放大」、頁首「投影」、`/s/:code/stage` 唯讀小卡，過去場次也可用（AC9.6, 9.7）
+
+**管理端（US5–US7、US9）**
+
+- [x] **T030** `stores/auth.ts`、`LoginPage`（A1）、路由守衛（AC5.1）
+- [x] **T031** `AdminLayout`、`SessionListPage`（A2）；≥1280px 時場次列表改為左側欄（AC5.5, 5.10；ux.md §2.1）
+- [x] **T032** `SessionEditPage`（A3）：建立/編輯、預設值（下一個主日、上一場講員）、「建立並開放」與「存草稿」、建立後顯示 QR（AC5.2, 5.11）
+- [x] **T033** 場次狀態切換、自動結束時間設定、刪除場次（輸入標題確認）（AC5.3, 5.6, 5.9）
+- [x] **T034** `QrShareDialog`（A6）：以 `SITE_URL` 產生 QR（qrcode 套件，等級 M）、複製連結、下載 PNG 1024px / SVG、全螢幕投影 QR、固定 `/now` QR（AC5.4；plan §7.1）
+- [x] **T035** `SessionManagePage`（A4）：電腦雙欄 / 手機單欄、預設「待回應＋最多附議」、分頁計數（AC6.1）
+- [x] **T036** `ReplyEditor`（A5）：新增/編輯/刪除回覆、`Ctrl+Enter`；同工看不到回覆（AC6.2, 6.3, 6.5；Q1）
+- [x] **T037** `PostCard` admin 模式：隱藏/取消隱藏、5 秒復原（AC7.1–7.3）
+- [x] **T038** 會友頁的管理者提示列、「以會友身分預覽」（AC5.7, 5.8）
+- [x] **T039b** 管理端 `admin/StagePage`：共用 StageView，加「文字回覆」（AC9.4）
+
+**驗收**
+
+- [~] **T104** RWD 走查：360、390、768、1024、1366、1920 寬度下，所有畫面以假資料完整操作（AC1.6, AC5.10；ux.md §2.1）
+- [ ] **T105** 設計確認：對照設計稿與 ux.md 逐頁走查，需要調整的回寫 ux.md `👤`
+
+**檢查點 1**：以假資料完整走一次（自動化走查已通過，見下方紀錄；待你在手機與電腦上實際走查）「建立場次 → 投影 QR → 會友留言、附議、放大 → 牧者在講台模式逐題檢視並文字回覆 → 隱藏一則 → 結束場次 → 過去場次唯讀」，畫面經你確認。
+
+> **Phase 1 走查紀錄（2026-11-02）**：以 headless Edge 對打包後的網站執行。
+>
+> - 截圖寬度：390、768、1024、1366、1440（360、1920 尚未截圖）。
+> - 互動流程 22 項全部通過：建立場次 → QR、Ctrl+Enter 回覆、隱藏與復原、講台鍵盤切換、會友留言與附議、頻率限制、結束場次後唯讀、`/now`、新留言提示不跳動、排序已變動提示、隱藏即時消失、斷線提示。
+> - 主控台沒有錯誤。
+
+## Phase 2 — 資料庫與權限（FR-001~005, 008, 009, 011, 012）
+
+- [ ] **T005** 建立 Supabase 專案；啟用 Anonymous Sign-ins、關閉公開註冊；提供 URL 與 publishable key `👤`
+- [ ] **T006** 安裝 Supabase CLI、`supabase init`、`supabase link`（本機可先 `supabase start`，不必等 T005）
+- [ ] **T010** Migration：enums、`staff_members`、`sessions`、`posts`、`upvotes`、`replies`、索引
+- [ ] **T011** Migration：`is_staff()`、`is_pastor()`、`gen_session_code()`、`session_is_writable()`
+- [ ] **T012** Migration：所有 triggers（plan §3.2）與欄位層級權限
+- [ ] **T013** Migration：RLS policies（plan §4 權限矩陣）
+- [ ] **T014** pgTAP 測試：權限矩陣每一格（含任何人都不能直接 DELETE posts、前端角色都讀不到 `posts.author_id`）+ 頻率限制 + 計數正確性
+- [ ] **T019** Migration：啟用 pg_cron，每分鐘自動結束到期場次；pgTAP 測試到期後無法發文（AC5.9；plan §3.1.1）
+- [ ] **T016** `supabase gen types` → `src/types/database.ts`
+- [ ] **T017** 建立牧者、同工測試帳號並寫入 `staff_members` `👤`
+- [ ] **T018** GitHub Actions `db-test.yml`：CI 執行 `supabase test db`
+- [ ] **T108** GitHub Actions `keepalive.yml`：每日排程呼叫一次 Supabase API，避免免費專案閒置暫停（spec §7.1 P-02）
+
+**檢查點 2**：所有 pgTAP 測試通過；以匿名身分無法讀到草稿與隱藏留言。
+
+## Phase 3 — 串接後端
+
+- [ ] **T007** `boot/supabase.ts` 建立 client，並寫一個連線健康檢查
+- [ ] **T020** `services/supabase/`：sessions、posts（含附議）、replies，實作 `services/types.ts` 同一組介面；DB 型別 ↔ 領域模型轉換 + Vitest
+- [ ] **T106** 身分串接：會友 Anonymous Sign-in（AC1.4）、管理者 Email 登入與 `staff_members` 角色（AC5.1）
+- [ ] **T015** 技術驗證：Realtime `postgres_changes` + `realtime.send` 廣播隱藏事件（雙瀏覽器實測）
+- [ ] **T027** `services/supabase/realtime.ts`：實作 `subscribeSession`，新增/更新/移除/重連（AC4.1–4.3；plan §5）
+- [ ] **T107** 錯誤對應：頻率限制、場次已結束、權限不足等 DB 錯誤轉成 ux.md §8 文案
+- [ ] **T028** 手機版實機驗收（iOS Safari、Android Chrome、LINE 內建瀏覽器）
+
+**檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
+
+## Phase 4 — 保存與匯出（US8）
+
+- [ ] **T040** `utils/export.ts`（Markdown / CSV）+ Vitest（AC8.3）
+- [ ] **T041** 匯出按鈕與下載
+- [ ] **T042** 已結束場次唯讀狀態驗收（AC1.2, 8.2）
+
+## Phase 5 — 上線前
+
+- [ ] **T050** 無障礙與長者友善檢查（字級、對比、觸控區）
+- [ ] **T051** 安全檢查：以匿名 key 直接呼叫 REST API 嘗試越權
+- [ ] **T052** 使用說明（給牧者/同工的操作手冊一頁）
+- [ ] **T053** 主日試營運，收集回饋 → 更新 spec / backlog
+- [ ] **T054** RWD 驗收（真實資料）：360、390、768、1024、1366、1440、1920 寬度下，會友端與管理端所有頁面（含講台模式、過去場次）皆可完整操作（AC1.6, AC5.10；ux.md §2.1）

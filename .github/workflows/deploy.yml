@@ -1,0 +1,58 @@
+# 部署到 GitHub Pages（tasks T004；plan §7）
+# push main → 測試、型別檢查 → 打包 → 部署。
+# 網址路徑與 QR 用的網址預設由 repo 名稱算出：https://<帳號>.github.io/<repo>/
+# 綁定自訂網域後（T009），到 repo Settings → Secrets and variables → Actions → Variables
+# 設定 SITE_URL（例：https://qa.example.org）與 BASE_PATH（填 /）即可覆蓋。
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BASE_PATH: ${{ vars.BASE_PATH || github.event.repository.name }}
+      QCLI_SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+      # Phase 3 串接 Supabase 前一律用假資料（spec D8）
+      QCLI_DATA_SOURCE: ${{ vars.DATA_SOURCE || 'mock' }}
+      QCLI_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      QCLI_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build # 會一併產生 history mode 用的 404.html
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist/spa
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
