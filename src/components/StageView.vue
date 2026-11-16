@@ -61,6 +61,34 @@ function onKey(e: KeyboardEvent) {
   else if (e.key === 'Escape' && !document.fullscreenElement) emit('close');
 }
 
+// 滑鼠滾輪／觸控板：往下捲是下一則，往上捲是上一則（AC9.3）。
+// 觸控板一次滑動會連續送出很多 wheel 事件（含慣性），所以一次手勢只切一則：
+// 切換後要等滾輪停下 WHEEL_IDLE_MS 才能再切。
+const WHEEL_THRESHOLD = 40;
+const WHEEL_IDLE_MS = 220;
+let wheelAcc = 0;
+let wheelLocked = false;
+let wheelTimer: ReturnType<typeof setTimeout> | undefined;
+
+function onWheel(e: WheelEvent) {
+  if (e.ctrlKey) return; // Ctrl + 滾輪是縮放畫面，不攔
+  e.preventDefault();
+  if (document.querySelector('.q-dialog')) return; // 回覆對話框開著時不切換
+  clearTimeout(wheelTimer);
+  wheelTimer = setTimeout(() => {
+    wheelLocked = false;
+    wheelAcc = 0;
+  }, WHEEL_IDLE_MS);
+  if (wheelLocked) return;
+  const d = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+  wheelAcc += e.deltaMode === 1 ? d * 16 : d; // deltaMode 1 = 以「行」為單位
+  if (Math.abs(wheelAcc) >= WHEEL_THRESHOLD) {
+    go(wheelAcc > 0 ? 1 : -1);
+    wheelLocked = true;
+    wheelAcc = 0;
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', onKey);
   // iPhone Safari 不支援，就以整頁顯示（ux.md A7）
@@ -69,6 +97,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey);
+  clearTimeout(wheelTimer);
   if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
 });
 
@@ -76,7 +105,7 @@ const isPhonePortrait = computed(() => $q.screen.width < 600 && $q.screen.width 
 </script>
 
 <template>
-  <div class="stage">
+  <div class="stage" @wheel="onWheel">
     <div class="stage__top">
       <span class="stage__label">{{ label }}</span>
       <button type="button" class="btn btn--text stage__close" @click="emit('close')">

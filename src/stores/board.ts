@@ -7,7 +7,7 @@ import { services } from '@/services';
 import type { ConnectionState } from '@/services/types';
 import type { Post, PostInput, Session } from '@/types/models';
 import {
-  type AdminFilter,
+  type PostFilter,
   type PostSort,
   countByFilter,
   insertionIndex,
@@ -22,11 +22,11 @@ export type BoardStatus = 'idle' | 'loading' | 'ready' | 'not_found' | 'error';
 
 const PREF_KEY = (mode: BoardMode) => `echo.board.${mode}`;
 
-function loadPrefs(mode: BoardMode): { sort: PostSort; filter: AdminFilter } {
+function loadPrefs(mode: BoardMode): { sort: PostSort; filter: PostFilter } {
   const fallback =
     mode === 'admin'
-      ? { sort: 'top' as PostSort, filter: 'pending' as AdminFilter } // A4 預設「待回應＋最多附議」
-      : { sort: 'newest' as PostSort, filter: 'all' as AdminFilter };
+      ? { sort: 'top' as PostSort, filter: 'all' as PostFilter } // A4 預設「全部＋最多附議」（D13）
+      : { sort: 'newest' as PostSort, filter: 'all' as PostFilter };
   try {
     const raw = sessionStorage.getItem(PREF_KEY(mode));
     return raw ? { ...fallback, ...(JSON.parse(raw) as object) } : fallback;
@@ -45,7 +45,7 @@ export const useBoardStore = defineStore('board', () => {
   /** 使用者往下捲時進來的新留言，等點「↑ N 則新留言」再插入 */
   const pendingNewIds = ref<string[]>([]);
   const sort = ref<PostSort>('newest');
-  const filter = ref<AdminFilter>('all');
+  const filter = ref<PostFilter>('all');
   const connection = ref<ConnectionState>('connected');
   const atTop = ref(true);
   /** 講台模式的順序快照（AC9.3：沿用進入時的篩選與排序） */
@@ -182,7 +182,7 @@ export const useBoardStore = defineStore('board', () => {
     reset();
     mode.value = nextMode;
     ({ sort: sort.value, filter: filter.value } = loadPrefs(nextMode));
-    if (nextMode === 'member') filter.value = 'all';
+    if (nextMode === 'member' && filter.value === 'hidden') filter.value = 'all';
     status.value = 'loading';
 
     try {

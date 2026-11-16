@@ -67,8 +67,19 @@ describe('篩選（AC6.1）', () => {
     ).toEqual(['pen']);
   });
 
+  it('已回應 = 未隱藏且有文字回覆', () => {
+    expect(
+      [answered, hidden, pending].filter((p) => matchesFilter(p, 'answered')).map((p) => p.id),
+    ).toEqual(['ans']);
+  });
+
   it('全部不含已隱藏；已隱藏另列', () => {
-    expect(countByFilter([answered, hidden, pending])).toEqual({ pending: 1, all: 2, hidden: 1 });
+    expect(countByFilter([answered, hidden, pending])).toEqual({
+      all: 2,
+      pending: 1,
+      answered: 1,
+      hidden: 1,
+    });
   });
 });
 

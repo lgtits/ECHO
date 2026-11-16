@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// A1 登入（ux.md A1；AC5.1）。不提供註冊。
+// A1 登入（ux.md A1；AC5.1）：只輸入密碼，登入共用的管理帳號（spec D14）。
+// 會友端沒有任何入口連到這裡，只能直接輸入網址。
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { services } from '@/services';
@@ -10,7 +11,6 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 
-const email = ref('');
 const password = ref('');
 const loading = ref(false);
 const error = ref('');
@@ -26,7 +26,7 @@ async function submit() {
   loading.value = true;
   error.value = '';
   try {
-    await auth.signIn(email.value, password.value);
+    await auth.signIn(password.value);
     await router.replace(target());
   } catch (e) {
     error.value = errorMessage(e);
@@ -48,24 +48,14 @@ onMounted(async () => {
       <h1 class="login__brand">ECHO <span>管理</span></h1>
       <form class="login__form" @submit.prevent="submit">
         <div class="field">
-          <label for="email" class="field__label">Email</label>
-          <input
-            id="email"
-            v-model="email"
-            class="input"
-            type="email"
-            autocomplete="username"
-            required
-          />
-        </div>
-        <div class="field">
-          <label for="password" class="field__label">密碼</label>
+          <label for="password" class="field__label">管理密碼</label>
           <input
             id="password"
             v-model="password"
             class="input"
             type="password"
             autocomplete="current-password"
+            autofocus
             required
           />
         </div>
@@ -78,8 +68,7 @@ onMounted(async () => {
       <p class="login__note">忘記密碼請聯絡系統管理者。</p>
 
       <div v-if="isMock" class="login__demo">
-        <b>示範模式（假資料）</b>：任何 Email 與密碼都可以登入。<br />
-        Email 含 <code>member</code> → 沒有管理權限；密碼 <code>wrong</code> → 帳號或密碼錯誤。
+        <b>示範模式（假資料）</b>：任何密碼都可以登入；密碼 <code>wrong</code> → 密碼錯誤。
       </div>
       <router-link to="/" class="login__back">‹ 回會友首頁</router-link>
     </main>

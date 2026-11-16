@@ -25,10 +25,11 @@ jobs:
     env:
       BASE_PATH: ${{ vars.BASE_PATH || github.event.repository.name }}
       QCLI_SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
-      # Phase 3 串接 Supabase 前一律用假資料（spec D8）
-      QCLI_DATA_SOURCE: ${{ vars.DATA_SOURCE || 'mock' }}
+      # 真實資料（Supabase）；需要在 repo Variables 設定 SUPABASE_URL、SUPABASE_PUBLISHABLE_KEY
+      QCLI_DATA_SOURCE: ${{ vars.DATA_SOURCE || 'supabase' }}
       QCLI_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       QCLI_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      QCLI_ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
     steps:
       - uses: actions/checkout@v7
 

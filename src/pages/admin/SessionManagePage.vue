@@ -12,7 +12,8 @@ import ReplyEditor from '@/components/ReplyEditor.vue';
 import QrShareDialog from '@/components/QrShareDialog.vue';
 import QrImage from '@/components/QrImage.vue';
 import QrProjector from '@/components/QrProjector.vue';
-import { ADMIN_SORTS, FILTER_LABEL, SORT_LABEL, type AdminFilter } from '@/utils/sortFilter';
+import FilterTabs from '@/components/FilterTabs.vue';
+import { ADMIN_FILTERS, ADMIN_SORTS } from '@/utils/sortFilter';
 import { buildSessionUrl } from '@/utils/sessionUrl';
 import { displayUrl, siteUrl } from '@/utils/config';
 import { errorMessage } from '@/utils/errors';
@@ -39,7 +40,6 @@ const heroHidden = ref(false);
 const showHero = computed(() => route.query.created === '1' && !heroHidden.value);
 const replyPost = computed(() => (replyId.value ? (board.get(replyId.value) ?? null) : null));
 const showPanel = computed(() => isDesktop.value);
-const FILTERS: AdminFilter[] = ['pending', 'all', 'hidden'];
 
 const statusText = computed(() => {
   const x = s.value;
@@ -196,9 +196,14 @@ async function hide(postId: string, hidden: boolean) {
   }
 }
 
-function zoom(postId: string) {
+/** 頁首「放大」：從目前篩選與排序的第一則開始（AC9.1） */
+function zoom() {
   board.startStage();
-  void router.push({ path: `/admin/sessions/${id.value}/stage`, query: { post: postId } });
+  const first = board.visible[0]?.id;
+  void router.push({
+    path: `/admin/sessions/${id.value}/stage`,
+    query: first ? { post: first } : {},
+  });
 }
 
 function showNew() {
@@ -244,6 +249,14 @@ function showNew() {
         </button>
       </div>
       <div v-if="s" class="bar__actions">
+        <button
+          type="button"
+          class="btn btn--secondary"
+          :disabled="!board.visible.length"
+          @click="zoom"
+        >
+          放大
+        </button>
         <button type="button" class="btn btn--secondary" @click="shareOpen = true">分享 QR</button>
         <button
           v-if="board.writable"
@@ -323,37 +336,14 @@ function showNew() {
 
     <div class="cols">
       <section class="cols__list">
-        <nav class="tabs" aria-label="篩選留言">
-          <button
-            v-for="f in FILTERS"
-            :key="f"
-            type="button"
-            class="tabs__tab"
-            :class="{ 'tabs__tab--on': board.filter === f }"
-            :aria-pressed="board.filter === f"
-            @click="board.filter = f"
-          >
-            {{ FILTER_LABEL[f] }} <span class="tabs__n">{{ board.counts[f] }}</span>
-          </button>
-          <button type="button" class="btn btn--text tabs__sort" aria-label="排序方式">
-            依{{ SORT_LABEL[board.sort].replace('最多', '') }} ▾
-            <q-menu anchor="bottom right" self="top right">
-              <q-list style="min-width: 140px">
-                <q-item
-                  v-for="opt in ADMIN_SORTS"
-                  :key="opt"
-                  v-close-popup
-                  clickable
-                  :active="board.sort === opt"
-                  active-class="text-primary"
-                  @click="board.sort = opt"
-                >
-                  <q-item-section>{{ SORT_LABEL[opt] }}</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </button>
-        </nav>
+        <FilterTabs
+          v-model:filter="board.filter"
+          v-model:sort="board.sort"
+          class="tabs-inset"
+          :filters="ADMIN_FILTERS"
+          :sorts="ADMIN_SORTS"
+          :counts="board.counts"
+        />
 
         <button v-if="board.orderStale" type="button" class="stale" @click="board.refreshOrder()">
           排序已變動，點此更新
@@ -374,7 +364,9 @@ function showNew() {
                 : '還沒有留言。'
               : board.filter === 'hidden'
                 ? '沒有隱藏的留言。'
-                : '還沒有留言。'
+                : board.filter === 'answered' && board.counts.all
+                  ? '還沒有回應的留言。'
+                  : '還沒有留言。'
           }}
         </p>
 
@@ -386,7 +378,6 @@ function showNew() {
             mode="admin"
             can-reply
             :selected="showPanel && replyId === p.id"
-            @zoom="zoom(p.id)"
             @reply="openReply(p.id)"
             @hide="hide(p.id, $event)"
           />
@@ -462,7 +453,7 @@ function showNew() {
 
 .conn-bar {
   position: sticky;
-  top: 3px;
+  top: var(--admin-top, 3px);
   z-index: 15;
   padding: 10px 20px;
   font-size: 14px;
@@ -480,6 +471,24 @@ function showNew() {
   min-height: 64px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--echo-line);
+  background: var(--echo-bg);
+
+  // 電腦上場次標題列固定在頂端；手機上太高（標題＋狀態＋按鈕），跟會友端一樣捲走
+  @media (min-width: 1024px) {
+    position: sticky;
+    top: var(--admin-top, 3px);
+    z-index: 16;
+    flex-wrap: nowrap; // 固定一行（回覆面板的位置以 65px 計算）
+    height: 65px;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    .bar__title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
 
   &__info {
     display: flex;
@@ -630,10 +639,10 @@ function showNew() {
 
   &__panel {
     position: sticky;
-    top: 3px;
+    top: calc(var(--admin-top, 3px) + 65px); // 在固定的場次標題列下方
     width: 340px;
     flex-shrink: 0;
-    height: calc(100vh - 3px);
+    height: calc(100vh - var(--admin-top, 3px) - 65px);
     padding: 24px;
     border-left: 1px solid var(--echo-line);
     overflow-y: auto;
@@ -646,43 +655,8 @@ function showNew() {
   }
 }
 
-.tabs {
-  display: flex;
-  align-items: center;
-  gap: 24px;
+.tabs-inset {
   padding: 0 20px;
-  border-bottom: 1px solid var(--echo-line);
-  overflow-x: auto;
-
-  &__tab {
-    min-height: 48px;
-    margin-bottom: -1px;
-    padding: 0;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    font-size: 15px;
-    color: var(--echo-muted);
-    white-space: nowrap;
-    cursor: pointer;
-
-    &--on {
-      color: var(--echo-text);
-      font-weight: 600;
-      border-bottom-color: var(--echo-text);
-    }
-  }
-
-  &__n {
-    font-variant-numeric: tabular-nums;
-  }
-
-  &__sort {
-    margin-left: auto;
-    margin-right: -12px;
-    font-size: 14px;
-    white-space: nowrap;
-  }
 }
 
 .list :deep(.post) {

@@ -20,7 +20,8 @@ export type ServiceErrorCode =
   | 'invalid_credentials'
   | 'not_staff'
   | 'invalid_input'
-  | 'network';
+  | 'network'
+  | 'unknown';
 
 export class ServiceError extends Error {
   constructor(
@@ -35,7 +36,8 @@ export class ServiceError extends Error {
 export interface AuthService {
   /** 取得目前身分；會友第一次進入時在背景建立匿名身分（AC1.4） */
   getViewer(): Promise<Viewer>;
-  signIn(email: string, password: string): Promise<Viewer>;
+  /** 管理端只輸入密碼，登入共用的管理帳號（spec D14） */
+  signIn(password: string): Promise<Viewer>;
   signOut(): Promise<Viewer>;
 }
 

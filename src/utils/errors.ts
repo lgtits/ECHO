@@ -6,8 +6,8 @@ const MESSAGES: Record<string, string> = {
   session_closed: '本場次已結束，感謝你的回應',
   not_found: '找不到這筆資料，可能已被刪除',
   forbidden: '你沒有權限進行這個操作',
-  invalid_credentials: '帳號或密碼錯誤',
-  not_staff: '此帳號沒有管理權限',
+  invalid_credentials: '密碼錯誤',
+  not_staff: '管理帳號尚未設定完成，請聯絡系統管理者',
   invalid_input: '內容格式不正確，請檢查後再試',
   network: '連線中斷，請確認網路後再試',
 };

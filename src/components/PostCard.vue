@@ -24,7 +24,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   upvote: [];
-  zoom: [];
   reply: [];
   hide: [hidden: boolean];
 }>();
@@ -45,13 +44,7 @@ const who = computed(() => props.post.nickname || '匿名');
     }"
   >
     <div class="post__main">
-      <component
-        :is="mode === 'admin' ? 'button' : 'div'"
-        :type="mode === 'admin' ? 'button' : undefined"
-        class="post__content"
-        :aria-label="mode === 'admin' ? '放大成小卡' : undefined"
-        @click="mode === 'admin' && emit('zoom')"
-      >
+      <div class="post__content">
         <span class="post__meta">
           <span>{{ who }} · {{ time }}</span>
           <span v-if="post.isHidden" class="post__hidden-label">
@@ -60,16 +53,13 @@ const who = computed(() => props.post.nickname || '匿名');
           </span>
         </span>
         <span class="post__body">{{ post.body }}</span>
-      </component>
+      </div>
 
       <!-- 管理模式：右側操作列（手機改到內容下方） -->
       <div v-if="mode === 'admin'" class="post__admin-actions">
         <span class="post__count" :aria-label="`附議 ${post.upvoteCount}`"
           >↑ {{ post.upvoteCount }}</span
         >
-        <button v-if="!post.isHidden" type="button" class="btn btn--text" @click="emit('zoom')">
-          放大
-        </button>
         <button
           v-if="canReply && !post.isHidden"
           type="button"
@@ -115,7 +105,6 @@ const who = computed(() => props.post.nickname || '匿名');
       </button>
       <span class="post__spacer" />
       <span v-if="answered" class="post__answered">已回應</span>
-      <button type="button" class="btn btn--text btn--muted" @click="emit('zoom')">放大</button>
     </div>
     <div v-else-if="answered" class="post__footer post__footer--admin">
       <span class="post__spacer" />
@@ -154,10 +143,6 @@ const who = computed(() => props.post.nickname || '匿名');
     border: 0;
     background: transparent;
     text-align: left;
-  }
-
-  &--admin &__content {
-    cursor: pointer;
   }
 
   &__meta {

@@ -72,14 +72,14 @@
 
 - [ ] **T005** 建立 Supabase 專案；啟用 Anonymous Sign-ins、關閉公開註冊；提供 URL 與 publishable key `👤`
 - [ ] **T006** 安裝 Supabase CLI、`supabase init`、`supabase link`（本機可先 `supabase start`，不必等 T005）
-- [ ] **T010** Migration：enums、`staff_members`、`sessions`、`posts`、`upvotes`、`replies`、索引
-- [ ] **T011** Migration：`is_staff()`、`gen_session_code()`、`session_is_writable()`
-- [ ] **T012** Migration：所有 triggers（plan §3.2）與欄位層級權限
-- [ ] **T013** Migration：RLS policies（plan §4 權限矩陣）
-- [ ] **T014** pgTAP 測試：權限矩陣每一格（含任何人都不能直接 DELETE posts、前端角色都讀不到 `posts.author_id`）+ 頻率限制 + 計數正確性
-- [ ] **T019** Migration：啟用 pg_cron，每分鐘自動結束到期場次；pgTAP 測試到期後無法發文（AC5.9；plan §3.1.1）
+- [x] **T010** Migration：enums、`staff_members`、`sessions`、`posts`、`upvotes`、`replies`、索引
+- [x] **T011** Migration：`is_staff()`、`gen_session_code()`、`session_is_writable()`
+- [x] **T012** Migration：所有 triggers（plan §3.2）與欄位層級權限
+- [x] **T013** Migration：RLS policies（plan §4 權限矩陣）
+- [~] **T014** pgTAP 測試：權限矩陣每一格（含任何人都不能直接 DELETE posts、前端角色都讀不到 `posts.author_id`）+ 頻率限制 + 計數正確性（`supabase/tests/rls.test.sql` 已寫，待 `supabase test db` 實跑）
+- [~] **T019** Migration：啟用 pg_cron，每分鐘自動結束到期場次；pgTAP 測試到期後無法發文（AC5.9；plan §3.1.1）
 - [ ] **T016** `supabase gen types` → `src/types/database.ts`
-- [ ] **T017** 建立管理帳號（可只有一個）並寫入 `staff_members` `👤`
+- [ ] **T017** 建立共用管理帳號並寫入 `staff_members`，步驟見 `supabase/README.md` §4（spec D14）`👤`
 - [ ] **T018** GitHub Actions `db-test.yml`：CI 執行 `supabase test db`
 - [ ] **T108** GitHub Actions `keepalive.yml`：每日排程呼叫一次 Supabase API，避免免費專案閒置暫停（spec §7.1 P-02）
 
@@ -87,13 +87,15 @@
 
 ## Phase 3 — 串接後端
 
-- [ ] **T007** `boot/supabase.ts` 建立 client，並寫一個連線健康檢查
-- [ ] **T020** `services/supabase/`：sessions、posts（含附議）、replies，實作 `services/types.ts` 同一組介面；DB 型別 ↔ 領域模型轉換 + Vitest
-- [ ] **T106** 身分串接：會友 Anonymous Sign-in（AC1.4）、管理者 Email 登入與 `staff_members` 角色（AC5.1）
+- [~] **T007** 建立 Supabase client（放在 `services/supabase/index.ts`，元件碰不到）；連線健康檢查尚未做
+- [x] **T020** `services/supabase/`：sessions、posts（含附議）、replies，實作 `services/types.ts` 同一組介面；DB 型別 ↔ 領域模型轉換 + Vitest
+- [x] **T106** 身分串接：會友 Anonymous Sign-in（AC1.4）、管理者只輸入密碼登入共用帳號與 `staff_members` 角色（AC5.1、D14）
 - [ ] **T015** 技術驗證：Realtime `postgres_changes` + `realtime.send` 廣播隱藏事件（雙瀏覽器實測）
-- [ ] **T027** `services/supabase/realtime.ts`：實作 `subscribeSession`，新增/更新/移除/重連（AC4.1–4.3；plan §5）
-- [ ] **T107** 錯誤對應：頻率限制、場次已結束、權限不足等 DB 錯誤轉成 ux.md §8 文案
+- [~] **T027** `services/supabase/realtime.ts`：實作 `subscribeSession`，新增/更新/移除/重連（AC4.1–4.3；plan §5）
+- [x] **T107** 錯誤對應：頻率限制、場次已結束、權限不足等 DB 錯誤轉成 ux.md §8 文案
 - [ ] **T028** 手機版實機驗收（iOS Safari、Android Chrome、LINE 內建瀏覽器）
+
+- [x] **T111** 會友端移除後台連結（首頁「管理者登入」）、管理端改為只輸入密碼；預設資料來源改為 supabase（spec D14，2026-11-16）
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 

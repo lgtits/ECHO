@@ -163,10 +163,6 @@ onMounted(load);
         </div>
       </section>
     </template>
-
-    <footer class="home__foot">
-      <router-link to="/admin" class="home__admin">管理者登入</router-link>
-    </footer>
   </main>
 </template>
 
@@ -228,16 +224,6 @@ onMounted(load);
     display: flex;
     justify-content: center;
     padding: 12px 0;
-  }
-
-  &__foot {
-    margin-top: 40px;
-    text-align: center;
-  }
-
-  &__admin {
-    font-size: 14px;
-    color: var(--echo-muted);
   }
 }
 

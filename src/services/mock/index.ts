@@ -204,13 +204,11 @@ export const mockServices: Services = {
       await delay(0, 30);
       return viewer();
     },
-    async signIn(email, password) {
+    async signIn(password) {
       await delay(300, 600);
       assertOnline();
-      const e = email.trim().toLowerCase();
-      if (!e || !password || password === 'wrong') throw new ServiceError('invalid_credentials');
-      if (e.includes('member')) throw new ServiceError('not_staff');
-      setCurrentStaff({ ...MOCK_ADMIN, email: e });
+      if (!password || password === 'wrong') throw new ServiceError('invalid_credentials');
+      setCurrentStaff({ ...MOCK_ADMIN, email: 'admin@echo.local' });
       return viewer();
     },
     async signOut() {

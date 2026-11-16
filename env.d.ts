@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly QCLI_SUPABASE_PUBLISHABLE_KEY: string;
   /** 正式網址，QR code 與分享連結一律使用它（不含結尾斜線） */
   readonly QCLI_SITE_URL?: string;
-  /** 資料來源：mock（預設，假資料）或 supabase（plan §6.1） */
+  /** 資料來源：supabase（預設，真實資料）或 mock（假資料，plan §6.1） */
   readonly QCLI_DATA_SOURCE?: 'mock' | 'supabase';
+  /** 共用管理帳號的 Email，預設 admin@echo.local（spec D14；supabase/README.md） */
+  readonly QCLI_ADMIN_EMAIL?: string;
 }

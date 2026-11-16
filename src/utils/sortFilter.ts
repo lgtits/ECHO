@@ -3,10 +3,15 @@
 import type { Post } from '@/types/models';
 
 export type PostSort = 'newest' | 'top' | 'oldest';
-export type AdminFilter = 'pending' | 'all' | 'hidden';
+export type PostFilter = 'all' | 'pending' | 'answered' | 'hidden';
+export type FilterCounts = Record<PostFilter, number>;
 
 export const MEMBER_SORTS: PostSort[] = ['newest', 'top'];
 export const ADMIN_SORTS: PostSort[] = ['top', 'newest', 'oldest'];
+
+/** 「全部」放第一個且為預設（D13）；會友看不到已隱藏 */
+export const MEMBER_FILTERS: PostFilter[] = ['all', 'pending', 'answered'];
+export const ADMIN_FILTERS: PostFilter[] = ['all', 'pending', 'answered', 'hidden'];
 
 export const SORT_LABEL: Record<PostSort, string> = {
   newest: '最新',
@@ -14,9 +19,10 @@ export const SORT_LABEL: Record<PostSort, string> = {
   oldest: '最舊',
 };
 
-export const FILTER_LABEL: Record<AdminFilter, string> = {
-  pending: '待回應',
+export const FILTER_LABEL: Record<PostFilter, string> = {
   all: '全部',
+  pending: '待回應',
+  answered: '已回應',
   hidden: '已隱藏',
 };
 
@@ -25,10 +31,12 @@ export function isAnswered(p: Post): boolean {
   return p.replies.length > 0;
 }
 
-export function matchesFilter(p: Post, filter: AdminFilter): boolean {
+export function matchesFilter(p: Post, filter: PostFilter): boolean {
   switch (filter) {
     case 'pending':
       return !p.isHidden && !isAnswered(p);
+    case 'answered':
+      return !p.isHidden && isAnswered(p);
     case 'all':
       return !p.isHidden;
     case 'hidden':
@@ -36,13 +44,14 @@ export function matchesFilter(p: Post, filter: AdminFilter): boolean {
   }
 }
 
-export function countByFilter(posts: Post[]): Record<AdminFilter, number> {
-  const c = { pending: 0, all: 0, hidden: 0 };
+export function countByFilter(posts: Post[]): FilterCounts {
+  const c = { all: 0, pending: 0, answered: 0, hidden: 0 };
   for (const p of posts) {
     if (p.isHidden) c.hidden++;
     else {
       c.all++;
-      if (!isAnswered(p)) c.pending++;
+      if (isAnswered(p)) c.answered++;
+      else c.pending++;
     }
   }
   return c;

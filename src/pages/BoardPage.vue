@@ -12,7 +12,8 @@ import MemberHeader from '@/components/MemberHeader.vue';
 import QrProjector from '@/components/QrProjector.vue';
 import { buildSessionUrl } from '@/utils/sessionUrl';
 import { siteUrl } from '@/utils/config';
-import { MEMBER_SORTS, SORT_LABEL } from '@/utils/sortFilter';
+import FilterTabs from '@/components/FilterTabs.vue';
+import { MEMBER_FILTERS, MEMBER_SORTS } from '@/utils/sortFilter';
 import { errorMessage } from '@/utils/errors';
 import { formatHm, formatLongDate } from '@/utils/time';
 
@@ -21,7 +22,7 @@ const route = useRoute();
 const router = useRouter();
 const board = useBoardStore();
 const auth = useAuthStore();
-const { isPhone, isDesktop } = useBreakpoint();
+const { isDesktop } = useBreakpoint();
 
 const code = computed(() => String(route.params.code ?? '').toUpperCase());
 const composerOpen = ref(false);
@@ -54,7 +55,8 @@ function onScroll() {
 }
 
 async function load() {
-  await auth.ensure();
+  // 建立匿名身分失敗時仍可唯讀瀏覽（留言、附議時會再試一次）
+  await auth.ensure().catch(() => null);
   await board.open({ code: code.value }, 'member');
 }
 
@@ -78,6 +80,13 @@ async function upvote(id: string) {
   }
 }
 
+const emptyText = computed(() => {
+  if (board.counts.all && board.filter === 'pending') return '所有留言都回應了。';
+  if (board.counts.all && board.filter === 'answered') return '還沒有回應的留言。';
+  return closed.value ? '這個場次沒有留言。' : '還沒有人留言，成為第一個吧！';
+});
+
+/** 頁首「放大」：從目前篩選與排序的第一則開始（AC9.6） */
 function zoom(postId?: string) {
   board.startStage();
   const first = postId ?? board.visible[0]?.id;
@@ -95,7 +104,7 @@ function openComposer() {
       <button type="button" class="btn btn--text head__action" @click="qrOpen = true">
         QR code
       </button>
-      <button type="button" class="btn btn--text head__action" @click="zoom()">投影</button>
+      <button type="button" class="btn btn--text head__action" @click="zoom()">放大</button>
     </template>
   </MemberHeader>
 
@@ -140,28 +149,13 @@ function openComposer() {
 
       <PostComposer v-if="isDesktop && board.writable" variant="inline" />
 
-      <div class="toolbar">
-        <span class="toolbar__count">{{ board.visible.length }} 則留言</span>
-        <button type="button" class="btn btn--text toolbar__sort" aria-label="排序方式">
-          {{ SORT_LABEL[board.sort] }} ▾
-          <q-menu anchor="bottom right" self="top right">
-            <q-list style="min-width: 140px">
-              <q-item
-                v-for="opt in MEMBER_SORTS"
-                :key="opt"
-                v-close-popup
-                clickable
-                :active="board.sort === opt"
-                active-class="text-primary"
-                @click="board.sort = opt"
-              >
-                <q-item-section>{{ SORT_LABEL[opt] }}</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </button>
-      </div>
-      <hr class="hairline" />
+      <FilterTabs
+        v-model:filter="board.filter"
+        v-model:sort="board.sort"
+        :filters="MEMBER_FILTERS"
+        :sorts="MEMBER_SORTS"
+        :counts="board.counts"
+      />
 
       <button v-if="board.orderStale" type="button" class="stale" @click="board.refreshOrder()">
         排序已變動，點此更新
@@ -177,7 +171,7 @@ function openComposer() {
       </div>
 
       <p v-else-if="!board.visible.length" class="empty">
-        {{ closed ? '這個場次沒有留言。' : '還沒有人留言，成為第一個吧！' }}
+        {{ emptyText }}
       </p>
 
       <TransitionGroup v-else name="fade" tag="div" class="list">
@@ -188,7 +182,6 @@ function openComposer() {
           mode="member"
           :writable="board.writable"
           @upvote="upvote(p.id)"
-          @zoom="zoom(p.id)"
         />
       </TransitionGroup>
     </main>
@@ -212,11 +205,7 @@ function openComposer() {
     </div>
     <p v-else-if="closed" class="page desk-closed">本場次已結束，感謝你的回應</p>
 
-    <PostComposer
-      v-if="!isDesktop"
-      v-model="composerOpen"
-      :variant="isPhone ? 'sheet' : 'dialog'"
-    />
+    <PostComposer v-if="!isDesktop" v-model="composerOpen" variant="dialog" />
 
     <QrProjector
       v-if="s && qrOpen"
@@ -297,24 +286,6 @@ function openComposer() {
     margin: 0;
     font-size: 15px;
     color: var(--echo-muted);
-  }
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  padding-top: 8px;
-
-  &__count {
-    font-size: 14px;
-    color: var(--echo-muted);
-  }
-
-  &__sort {
-    margin-left: auto;
-    margin-right: -12px;
-    font-size: 14px;
-    gap: 4px;
   }
 }
 

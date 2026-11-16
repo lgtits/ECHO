@@ -25,7 +25,8 @@ function close() {
 }
 
 onMounted(async () => {
-  await auth.ensure();
+  // 建立匿名身分失敗時仍可唯讀瀏覽（留言、附議時會再試一次）
+  await auth.ensure().catch(() => null);
   await board.open({ code: code.value }, 'member');
   if (board.status !== 'ready') return;
   if (currentId.value) board.ensureStageIncludes(currentId.value);

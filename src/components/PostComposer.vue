@@ -1,20 +1,23 @@
 <script setup lang="ts">
-// 撰寫留言（ux.md M3）：手機底部面板、平板置中對話框、電腦直接展開在列表上方。
-import { computed, nextTick, ref, watch } from 'vue';
+// 撰寫留言（ux.md M3）：手機、平板用彈出對話框（手機靠上），電腦直接展開在列表上方。
+// 手機不用底部面板：iOS 鍵盤彈出時不縮小版面，貼底的面板會被鍵盤蓋住。
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useBoardStore } from '@/stores/board';
 import { LIMITS } from '@/types/models';
 import { errorMessage } from '@/utils/errors';
+import { useBreakpoint } from '@/composables/useBreakpoint';
 
 const props = defineProps<{
-  variant: 'inline' | 'sheet' | 'dialog';
-  /** sheet / dialog 是否開啟 */
+  variant: 'inline' | 'dialog';
+  /** dialog 是否開啟 */
   modelValue?: boolean;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [open: boolean] }>();
 
 const $q = useQuasar();
 const board = useBoardStore();
+const { isPhone } = useBreakpoint();
 
 const NICK_KEY = 'echo.nickname';
 const draftKey = computed(() => `echo.draft.${board.session?.id ?? ''}`);
@@ -55,13 +58,35 @@ const open = computed({
   set: (v: boolean) => emit('update:modelValue', v),
 });
 
+// 鍵盤彈出後的可視範圍（visualViewport）：手機上對話框不超過這個高度，也跟著 iOS 的捲動位移
+const vv = ref<{ top: number; height: number } | null>(null);
+function onViewport() {
+  const v = window.visualViewport;
+  vv.value = v ? { top: v.offsetTop, height: v.height } : null;
+}
+function watchViewport(on: boolean) {
+  const v = window.visualViewport;
+  if (!v) return;
+  const fn = on ? v.addEventListener.bind(v) : v.removeEventListener.bind(v);
+  fn('resize', onViewport);
+  fn('scroll', onViewport);
+  if (on) onViewport();
+}
+const shellStyle = computed(() =>
+  isPhone.value && vv.value
+    ? { '--vv-top': `${vv.value.top}px`, '--vv-height': `${vv.value.height}px` }
+    : undefined,
+);
+
 watch(open, async (v) => {
+  watchViewport(v);
   if (v) {
     error.value = '';
     await nextTick();
     textarea.value?.focus();
   }
 });
+onBeforeUnmount(() => watchViewport(false));
 
 async function submit() {
   if (!canSend.value) return;
@@ -126,24 +151,23 @@ function onKeydown(e: KeyboardEvent) {
   <q-dialog
     v-else
     v-model="open"
-    :position="variant === 'sheet' ? 'bottom' : 'standard'"
-    :transition-show="variant === 'sheet' ? 'slide-up' : 'fade'"
-    :transition-hide="variant === 'sheet' ? 'slide-down' : 'fade'"
+    class="composer-dialog"
+    :class="{ 'composer-dialog--phone': isPhone }"
+    transition-show="fade"
+    transition-hide="fade"
   >
     <!-- Quasar 只讓 q-dialog 的直接子層 div 接收點擊，所以外面要包 div -->
-    <div class="composer__shell">
+    <div class="composer__shell" :style="shellStyle">
       <form
-        class="composer composer--panel"
-        :class="`composer--${variant}`"
+        class="composer composer--panel composer--dialog"
         aria-label="撰寫留言"
         @submit.prevent="submit"
       >
-        <div v-if="variant === 'sheet'" class="composer__handle" aria-hidden="true" />
-        <div v-else class="composer__title">
+        <div class="composer__title">
           <span>撰寫留言</span>
           <button type="button" class="btn btn--text btn--muted" @click="open = false">取消</button>
         </div>
-        <div class="field">
+        <div class="field composer__body">
           <label for="composer-body-panel" class="sr-only">留言內容</label>
           <textarea
             id="composer-body-panel"
@@ -274,23 +298,11 @@ function onKeydown(e: KeyboardEvent) {
     padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
   }
 
-  &--sheet {
-    border-radius: 12px 12px 0 0;
-  }
-
   &--dialog {
     width: 560px;
     max-width: calc(100vw - 32px);
     border-radius: 8px;
     padding-top: 16px;
-  }
-
-  &__handle {
-    width: 40px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--echo-border);
-    margin: 0 auto 4px;
   }
 
   &__title {
@@ -303,6 +315,47 @@ function onKeydown(e: KeyboardEvent) {
 
   &__textarea {
     min-height: 140px;
+  }
+}
+</style>
+
+<style lang="scss">
+// 手機：對話框靠上，鍵盤佔下半部時輸入框與「送出」仍看得到（ux.md M3）。
+// q-dialog 會 teleport 到 body，所以這段不能 scoped。
+.composer-dialog--phone .q-dialog__inner {
+  align-items: flex-start;
+  padding: calc(16px + env(safe-area-inset-top)) 12px 16px;
+
+  // 高度不超過鍵盤以外的可視範圍；空間不夠時縮小輸入框，「送出」永遠看得到
+  > .composer__shell {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--vv-top, 0px);
+    max-height: calc(var(--vv-height, 100dvh) - 32px - env(safe-area-inset-top)) !important;
+    overflow: hidden;
+    border-radius: 8px;
+  }
+
+  .composer--dialog {
+    flex: 0 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    padding-bottom: 16px;
+
+    > .composer__body {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+
+  .composer__textarea {
+    flex: 1 1 140px;
+    min-height: 72px;
+    height: auto;
+    resize: none;
   }
 }
 </style>

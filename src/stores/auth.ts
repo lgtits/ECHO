@@ -13,12 +13,19 @@ export const useAuthStore = defineStore('auth', () => {
   /** 第一次呼叫時取得身分（會友在背景建立匿名身分，AC1.4） */
   function ensure(): Promise<Viewer> {
     if (viewer.value) return Promise.resolve(viewer.value);
-    loading ??= services.auth.getViewer().then((v) => (viewer.value = v));
+    loading ??= services.auth
+      .getViewer()
+      .then((v) => (viewer.value = v))
+      .catch((e: unknown) => {
+        loading = null; // 下次再試
+        throw e;
+      });
     return loading;
   }
 
-  async function signIn(email: string, password: string) {
-    viewer.value = await services.auth.signIn(email, password);
+  /** 管理端只輸入密碼（spec D14） */
+  async function signIn(password: string) {
+    viewer.value = await services.auth.signIn(password);
   }
 
   async function signOut() {

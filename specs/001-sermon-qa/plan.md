@@ -13,7 +13,7 @@
 | 路由       | vue-router **history 模式**                      | 網址乾淨、QR code 較短；GitHub Pages 以 `404.html` 承接 SPA 路由（見 §7）         |
 | 後端       | Supabase（Postgres + Auth + Realtime）           | 指定；無需自建伺服器                                                              |
 | 會友身分   | Supabase **Anonymous Sign-in**                   | 每個裝置取得真正的 `auth.uid()`，RLS 才能強制「每人附議一次」「只能刪自己的留言」 |
-| 管理者身分 | Supabase Email + Password                        | 帳號由後台建立，關閉公開註冊                                                      |
+| 管理者身分 | Supabase Email + Password（一個共用帳號）        | 畫面只輸入密碼，Email 固定（`QCLI_ADMIN_EMAIL`）；帳號由後台建立（spec D14）      |
 | QR code    | `qrcode` npm 套件                                | 純前端產生，可輸出 PNG                                                            |
 | 測試       | Vitest（前端）、pgTAP（RLS，`supabase test db`） | 憲章要求                                                                          |
 | 部署       | GitHub Actions → GitHub Pages                    | 指定                                                                              |
@@ -71,6 +71,7 @@ create table posts (
   reply_count  int  not null default 0,   -- trigger 維護（>0 即「已回應」）
   is_hidden    boolean not null default false,
   hidden_by    uuid references staff_members(user_id),
+  hidden_by_name text,                   -- 快照，管理端顯示「由 OO 隱藏」
   hidden_at    timestamptz,
   created_at   timestamptz not null default now()
 );
@@ -142,6 +143,13 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 ```
 
 因此 `services/supabase/` 查詢 posts 時必須明確列出欄位，不能用 `select('*')`。
+
+實作補充（2026-11-16，`supabase/migrations/20261116000000_init.sql`）：
+
+- 留言 `id` 由前端產生（另開放 `insert (id)`），送出後用 id 讀回，不依賴 `RETURNING`，避免碰到 `author_id` 欄位權限。
+- 附議走 RPC `set_upvote(post_id, on)`（security invoker，RLS 照常套用），以便回傳清楚的錯誤碼。
+- 場次列表的留言數／待回應數走 RPC `session_counts(ids)`（security invoker，會友只算得到看得見的留言）。
+- 自訂錯誤一律 `raise exception 'echo:<code>'`，前端在 `services/supabase/errors.ts` 轉成 `ServiceError`。
 
 ## 4. 權限矩陣（RLS）
 
@@ -237,10 +245,10 @@ supabase/
                                          └─▶ services/supabase/  （Phase 3）
 ```
 
-- **切換規則**：`QCLI_DATA_SOURCE=mock | supabase`，未設定時用 `mock`。github.io 上的 UI 原型也用 mock，方便在手機上走查。
+- **切換規則**：`QCLI_DATA_SOURCE=supabase | mock`，未設定時用 `supabase`（2026-11-16 起改用真實資料）。缺少 Supabase 設定時直接報錯，不會悄悄退回假資料。
 - **介面**：`services/types.ts` 定義每個服務的方法與回傳的領域模型（`types/models.ts`）。mock 與 supabase 實作同一組介面，元件與 store 不知道背後是哪一個。
 - **即時事件**：介面提供 `subscribeSession(sessionId, handlers)`，回傳取消訂閱函式。mock 版以計時器模擬新留言、附議變動、斷線重連，讓 ux.md §6 的「不跳動」行為在 Phase 1 就能驗收。
-- **假身分**：mock 版的會友身分存在 `localStorage`（`echo.mock.uid`）；登入頁接受任何 Email，一律以示範管理帳號「王牧師」登入（畫面上有提示）。
+- **假身分**：mock 版的會友身分存在 `localStorage`（`echo.mock.uid`）；登入頁接受任何密碼，一律以示範管理帳號「王牧師」登入（畫面上有提示）。
 - **假資料重設**：mock 資料存在 `localStorage`（`echo.mock.db`），重新整理後保留；管理端「⋯」選單在 mock 模式多一項「重設示範資料」。
 - **mock 不做權限**：mock 只模擬畫面需要的行為（例如會友看不到隱藏留言），**真正的權限仍只以 RLS 實作**（憲章）。
 - 會友的暱稱存在 `localStorage`（`echo.nickname`）。
@@ -253,7 +261,8 @@ supabase/
 | `QCLI_SUPABASE_URL`             | Supabase 專案 URL                             | `https://xxxx.supabase.co`         | `.env.local`（本機）、GitHub Actions Variables |
 | `QCLI_SUPABASE_PUBLISHABLE_KEY` | 公開金鑰                                      | `sb_publishable_…`                 | 同上                                           |
 | `QCLI_SITE_URL`                 | **正式網址**，QR code 與分享連結一律用它      | `https://qa.[教會網域]`            | 同上                                           |
-| `QCLI_DATA_SOURCE`              | 資料來源：`mock`（預設）或 `supabase`（§6.1） | `mock`                             | 同上                                           |
+| `QCLI_DATA_SOURCE`              | 資料來源：`supabase`（預設）或 `mock`（§6.1） | `supabase`                         | 同上                                           |
+| `QCLI_ADMIN_EMAIL`              | 共用管理帳號 Email（spec D14）                | `admin@echo.local`（預設）         | 同上                                           |
 | `BASE_PATH`                     | 網站所在路徑（只在 build 時用）               | 自訂網域：`/`；github.io：`/echo/` | 同上                                           |
 
 - 前端讀得到的變數必須以 `QCLI_` 開頭（Quasar app-vite 的規則），程式中以 `import.meta.env.QCLI_*` 取用，型別宣告在 `env.d.ts`。`BASE_PATH` 只給 `quasar.config.ts` 用，不進前端。
@@ -308,7 +317,12 @@ DB 產生場次碼 ──▶ 前端組網址 ──▶ qrcode 套件在瀏覽器
 
 ### 7.3 Supabase 後台設定
 
-啟用 Anonymous Sign-ins、**關閉** Email 公開註冊、Site URL 設為 `SITE_URL`。
+步驟見 `supabase/README.md`。重點：
+
+- 啟用 Anonymous Sign-ins。「Allow new users to sign up」**要保持開啟**，關掉會連匿名登入一起擋掉；自己註冊的帳號不在 `staff_members`，沒有任何管理權限。
+- Rate Limits 的匿名登入上限調高（預設每 IP 每小時 30 次，教會 Wi-Fi 共用 IP 會不夠）。
+- 共用管理帳號：Supabase 密碼至少 6 碼，所以帳號實際密碼是 `echo-` 加上管理密碼，前端登入時自動補上前綴（spec D14）。
+- Site URL 設為 `SITE_URL`。
 
 ## 8. 風險與對策
 

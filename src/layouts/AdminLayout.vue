@@ -50,9 +50,15 @@ watch(
 
 <style scoped lang="scss">
 .admin {
+  // 固定在頂端的區塊總高度：綠色細條 3px＋頂部列 56px（≥1280px 改用側欄，只剩細條）
+  --admin-top: 59px;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--echo-bg);
+
+  @media (min-width: 1280px) {
+    --admin-top: 3px;
+  }
 
   &__strip {
     position: sticky;
@@ -73,10 +79,14 @@ watch(
   }
 
   &__bar {
+    position: sticky;
+    top: 3px;
+    z-index: 18;
     display: flex;
     align-items: center;
     gap: 8px;
     height: 56px;
+    background: var(--echo-bg);
     padding: 0 8px 0 16px;
     border-bottom: 1px solid var(--echo-line);
   }
