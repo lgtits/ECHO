@@ -237,7 +237,7 @@ nslookup -type=TXT _github-pages-challenge-lgtits.echo.tnlhc.org 8.8.8.8
 ## 6. 日常維護
 
 - **免費專案閒置一週會暫停**：每週主日都會使用通常不會觸發。若暫停，到 Supabase 後台按 **Restore** 即可（tasks T108 的每日自動 ping 尚未做）
-- **沒有自動備份**：免費方案不備份資料庫（spec §7.1 P-01）。後台匯出 Markdown / CSV（tasks T040、T041）尚未做，完成前可在 Supabase → Table Editor 把 `sessions`、`posts`、`replies` 各自 Export to CSV 保存
+- **沒有自動備份**：免費方案不備份資料庫（spec §7.1 P-01）。需要保存時，到 Supabase → Table Editor 把 `sessions`、`posts`、`replies` 各自 Export to CSV（後台不提供匯出，spec D16）
 - **換管理密碼**：見 §1.4，換完口頭告知同工
 
 ---

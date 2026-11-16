@@ -22,7 +22,7 @@ const route = useRoute();
 const router = useRouter();
 const board = useBoardStore();
 const auth = useAuthStore();
-const { isDesktop } = useBreakpoint();
+const { isDesktop, isPhone } = useBreakpoint();
 
 const code = computed(() => String(route.params.code ?? '').toUpperCase());
 const composerOpen = ref(false);
@@ -100,7 +100,8 @@ function openComposer() {
 
 <template>
   <MemberHeader back="/" :title="s?.title ?? ''" :condensed="scrolled && !!s">
-    <template v-if="s" #actions>
+    <!-- QR code、放大只在平板、電腦：手機是會友自己看的，不會拿來投影（spec AC5.12、AC9.6） -->
+    <template v-if="s && !isPhone" #actions>
       <button type="button" class="btn btn--text head__action" @click="qrOpen = true">
         QR code
       </button>

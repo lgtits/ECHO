@@ -97,14 +97,15 @@
 
 - [x] **T111** 會友端移除後台連結（首頁「管理者登入」）、管理端改為只輸入密碼；預設資料來源改為 supabase（spec D14，2026-11-16）
 - [x] **T112** 共用撰寫面板 `ComposeSheet`：會友撰寫留言與管理者回覆（手機、平板、講台模式）外觀一致，高度跟著 `visualViewport`（ux.md M3、A5，2026-11-16）
-- [~] **T113** 管理者刪除留言：migration `20261116010000_staff_delete_posts.sql`（posts DELETE policy）+ pgTAP、PostCard admin「刪除」＋確認對話框（AC7.4、7.5；spec D15）。待在 Supabase 執行 migration `👤`
+- [~] **T113** 管理者刪除留言：migration `20261116010000_staff_delete_posts.sql`（posts DELETE policy）+ pgTAP、PostCard admin「刪除」留言、每則回覆可單獨「刪除」，都有確認對話框（AC7.4、7.5；spec D15）。待在 Supabase 執行 migration `👤`
+- [x] **T114** 手機不顯示頁首「QR code」「放大」（會友端、管理端）；「以會友身分預覽」改為「前往會友留言板」；移除匯出選單項目（spec D16，2026-11-16）
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 
 ## Phase 4 — 保存與匯出（US8）
 
-- [ ] **T040** `utils/export.ts`（Markdown / CSV）+ Vitest（AC8.3）
-- [ ] **T041** 匯出按鈕與下載
+- ~~**T040** `utils/export.ts`（Markdown / CSV）+ Vitest（AC8.3）~~ 取消（spec D16）
+- ~~**T041** 匯出按鈕與下載~~ 取消（spec D16）
 - [ ] **T042** 已結束場次唯讀狀態驗收（AC1.2, 8.2）
 
 ## Phase 5 — 上線前

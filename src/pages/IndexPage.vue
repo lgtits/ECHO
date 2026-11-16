@@ -75,7 +75,8 @@ onMounted(load);
 <template>
   <MemberHeader />
   <main class="page home">
-    <h1 class="home__tagline">主日信息的回應與提問</h1>
+    <!-- 不放副標語：同一套系統會用在講道、活動等不同場合（ux.md M1） -->
+    <h1 class="sr-only">ECHO</h1>
 
     <p v-if="noCurrent" class="home__notice" role="status">目前沒有開放中的場次</p>
 
@@ -171,12 +172,6 @@ onMounted(load);
   padding-top: 24px;
   padding-bottom: 40px;
 
-  &__tagline {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    line-height: 1.4;
-  }
 
   &__notice {
     margin: 20px 0 0;

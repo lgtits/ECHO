@@ -1,7 +1,7 @@
 {
   "name": "echo",
   "version": "0.0.1",
-  "description": "主日講道 QA 留言板",
+  "description": "講道、活動的回應與提問留言板",
   "productName": "ECHO",
   "author": "ECHO",
   "type": "module",

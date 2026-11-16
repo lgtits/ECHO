@@ -27,6 +27,7 @@ const emit = defineEmits<{
   reply: [];
   hide: [hidden: boolean];
   delete: [];
+  deleteReply: [replyId: string];
 }>();
 
 const clock = useClock();
@@ -85,7 +86,17 @@ const who = computed(() => props.post.nickname || '匿名');
     <!-- 回覆 -->
     <div v-for="r in post.replies" :key="r.id" class="reply">
       <div class="reply__head">
-        {{ r.authorName }}回覆 · {{ formatPostTime(r.createdAt, new Date(clock)) }}
+        <span>{{ r.authorName }}回覆 · {{ formatPostTime(r.createdAt, new Date(clock)) }}</span>
+        <!-- 管理模式：不必打開回覆面板就能刪除回覆（AC7.5） -->
+        <button
+          v-if="mode === 'admin'"
+          type="button"
+          class="btn btn--text btn--danger reply__delete"
+          :aria-label="`刪除${r.authorName}的回覆`"
+          @click="emit('deleteReply', r.id)"
+        >
+          刪除
+        </button>
       </div>
       <ClampText class="reply__body" :text="r.body" :lines="3" />
     </div>
@@ -252,9 +263,19 @@ const who = computed(() => props.post.nickname || '匿名');
   background: var(--echo-subtle);
 
   &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 4px;
+  }
+
+  &__delete {
+    margin: -10px -10px -10px 0; // 觸控區維持 44px，不撐高回覆區塊
+    font-size: 14px;
+    font-weight: 400;
   }
 
   &__body {

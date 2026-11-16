@@ -25,7 +25,7 @@ const route = useRoute();
 const router = useRouter();
 const board = useBoardStore();
 const sessions = useSessionsStore();
-const { isDesktop } = useBreakpoint();
+const { isDesktop, isPhone } = useBreakpoint();
 
 const id = computed(() => String(route.params.id ?? ''));
 const s = computed(() => board.session);
@@ -106,7 +106,7 @@ function autoCloseDialog() {
   }
   $q.dialog({
     title: '設定自動結束',
-    message: '到時間後自動結束留言（講道當天）。',
+    message: '到時間後自動結束留言（場次當天）。',
     options: { type: 'radio', model: current, items },
     cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
     ok: { label: '儲存', flat: true, noCaps: true, color: 'primary' },
@@ -151,10 +151,6 @@ async function doRemove() {
   } catch (e) {
     $q.notify({ message: errorMessage(e) });
   }
-}
-
-function preview() {
-  if (s.value) window.open(router.resolve(`/s/${s.value.code}`).href, '_blank', 'noopener');
 }
 
 async function copyLink() {
@@ -218,6 +214,21 @@ function confirmDelete(postId: string) {
   });
 }
 
+/** 刪除回覆：不必打開回覆面板（AC7.5），一樣先確認 */
+function confirmDeleteReply(postId: string, replyId: string) {
+  $q.dialog({
+    title: '刪除這則回覆？',
+    message: '刪除後會友就看不到這則回覆了，無法復原。',
+    cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
+    ok: { label: '刪除', flat: true, noCaps: true, color: 'negative' },
+  }).onOk(() => {
+    board
+      .deleteReply(postId, replyId)
+      .then(() => $q.notify({ message: '已刪除回覆' }))
+      .catch((e: unknown) => $q.notify({ message: errorMessage(e) }));
+  });
+}
+
 /** 頁首「放大」：從目前篩選與排序的第一則開始（AC9.1） */
 function zoom() {
   board.startStage();
@@ -271,7 +282,9 @@ function showNew() {
         </button>
       </div>
       <div v-if="s" class="bar__actions">
+        <!-- 放大只在平板、電腦（手機螢幕太小，投影用不到；spec AC9.1） -->
         <button
+          v-if="!isPhone"
           type="button"
           class="btn btn--secondary"
           :disabled="!board.visible.length"
@@ -305,12 +318,8 @@ function showNew() {
               <q-item v-close-popup clickable :to="`/admin/sessions/${s.id}/edit`">
                 <q-item-section>編輯場次資訊</q-item-section>
               </q-item>
-              <q-item v-close-popup clickable @click="preview">
-                <q-item-section>以會友身分預覽</q-item-section>
-              </q-item>
-              <q-item disable>
-                <q-item-section>匯出 Markdown / CSV</q-item-section>
-                <q-item-section side>即將推出</q-item-section>
+              <q-item v-close-popup clickable :to="`/s/${s.code}`">
+                <q-item-section>前往會友留言板</q-item-section>
               </q-item>
               <q-separator />
               <q-item v-close-popup clickable @click="removeSession">
@@ -403,6 +412,7 @@ function showNew() {
             @reply="openReply(p.id)"
             @hide="hide(p.id, $event)"
             @delete="confirmDelete(p.id)"
+            @delete-reply="confirmDeleteReply(p.id, $event)"
           />
         </TransitionGroup>
       </section>

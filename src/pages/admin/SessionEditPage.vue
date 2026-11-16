@@ -41,7 +41,7 @@ const timeOptions = Array.from({ length: 96 }, (_, i) => {
 
 const titleError = computed(() => {
   if (!touched.value) return '';
-  if (!title.value.trim()) return '請輸入講道標題';
+  if (!title.value.trim()) return '請輸入標題';
   if (title.value.length > LIMITS.sessionTitle) return `標題最多 ${LIMITS.sessionTitle} 字`;
   return '';
 });
@@ -139,7 +139,7 @@ onMounted(async () => {
 
         <div v-else class="edit__body">
           <div class="field">
-            <label for="f-title" class="field__label">講道標題（必填）</label>
+            <label for="f-title" class="field__label">標題（必填）</label>
             <input
               id="f-title"
               v-model="title"
@@ -158,7 +158,7 @@ onMounted(async () => {
           </div>
 
           <div class="field">
-            <label for="f-speaker" class="field__label">講員</label>
+            <label for="f-speaker" class="field__label">講員／主講人</label>
             <input
               id="f-speaker"
               v-model="speaker"
@@ -172,7 +172,7 @@ onMounted(async () => {
           </div>
 
           <div class="field">
-            <label for="f-scripture" class="field__label">經文</label>
+            <label for="f-scripture" class="field__label">經文／副標題</label>
             <input
               id="f-scripture"
               v-model="scripture"
@@ -197,7 +197,7 @@ onMounted(async () => {
                 清除
               </button>
             </div>
-            <span class="field__hint">到時間後自動結束留言，日期與講道日期相同；可以不設。</span>
+            <span class="field__hint">到時間後自動結束留言，日期與場次日期相同；可以不設。</span>
           </div>
 
           <p v-if="error" class="field__error" role="alert">{{ error }}</p>

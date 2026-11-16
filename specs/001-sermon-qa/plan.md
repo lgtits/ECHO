@@ -203,7 +203,7 @@ src/
 │  ├─ board.ts               # 單一場次的留言、排序、篩選、即時合併
 │  └─ adminSessions.ts
 ├─ composables/useBoardRealtime.ts
-├─ utils/                    # 排序、篩選、匯出 Markdown/CSV（純函式，Vitest）
+├─ utils/                    # 排序、篩選、時間格式（純函式，Vitest）
 ├─ types/models.ts           # 前端領域模型（手寫，憲章）
 ├─ types/database.ts         # supabase gen types 產出（Phase 2）
 ├─ css/                      # 設計 token（色彩、字級，見 ux.md §7）
@@ -221,7 +221,7 @@ src/
    ├─ admin/LoginPage.vue           #  /admin/login
    ├─ admin/SessionListPage.vue     #  /admin
    ├─ admin/SessionEditPage.vue     #  /admin/sessions/new | /:id/edit
-   ├─ admin/SessionManagePage.vue   #  /admin/sessions/:id  (留言管理 / QR / 匯出)
+   ├─ admin/SessionManagePage.vue   #  /admin/sessions/:id  (留言管理 / QR)
    ├─ admin/StagePage.vue           #  /admin/sessions/:id/stage?post=<id>  講台模式（可回覆）
    └─ StagePage.vue                 #  /s/:code/stage?post=<id>  會友端放大（唯讀，AC9.6）
                                     #  兩者共用 components/StageView.vue + StageCard.vue
