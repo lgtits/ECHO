@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// 撰寫留言（ux.md M3）：手機、平板用彈出對話框（手機靠上），電腦直接展開在列表上方。
-// 手機不用底部面板：iOS 鍵盤彈出時不縮小版面，貼底的面板會被鍵盤蓋住。
+// 撰寫留言（ux.md M3）：手機是全螢幕撰寫頁，平板是置中對話框，電腦直接展開在列表上方。
+// 手機的撰寫頁高度跟著 visualViewport：iOS 鍵盤彈出時不縮小版面，固定高度的面板會被鍵盤蓋住。
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useBoardStore } from '@/stores/board';
@@ -58,11 +58,16 @@ const open = computed({
   set: (v: boolean) => emit('update:modelValue', v),
 });
 
-// 鍵盤彈出後的可視範圍（visualViewport）：手機上對話框不超過這個高度，也跟著 iOS 的捲動位移
-const vv = ref<{ top: number; height: number } | null>(null);
+// 鍵盤彈出後的可視範圍（visualViewport）。q-dialog 會 teleport 到 body，
+// 所以寫在 <html> 的 CSS 變數上，讓手機撰寫頁的高度與位置跟著它（下方非 scoped 樣式）。
+const keyboardOpen = ref(false);
 function onViewport() {
   const v = window.visualViewport;
-  vv.value = v ? { top: v.offsetTop, height: v.height } : null;
+  if (!v) return;
+  const root = document.documentElement.style;
+  root.setProperty('--echo-vv-top', `${v.offsetTop}px`);
+  root.setProperty('--echo-vv-height', `${v.height}px`);
+  keyboardOpen.value = window.innerHeight - v.height > 120;
 }
 function watchViewport(on: boolean) {
   const v = window.visualViewport;
@@ -71,12 +76,12 @@ function watchViewport(on: boolean) {
   fn('resize', onViewport);
   fn('scroll', onViewport);
   if (on) onViewport();
+  else {
+    document.documentElement.style.removeProperty('--echo-vv-top');
+    document.documentElement.style.removeProperty('--echo-vv-height');
+    keyboardOpen.value = false;
+  }
 }
-const shellStyle = computed(() =>
-  isPhone.value && vv.value
-    ? { '--vv-top': `${vv.value.top}px`, '--vv-height': `${vv.value.height}px` }
-    : undefined,
-);
 
 watch(open, async (v) => {
   watchViewport(v);
@@ -153,12 +158,61 @@ function onKeydown(e: KeyboardEvent) {
     v-model="open"
     class="composer-dialog"
     :class="{ 'composer-dialog--phone': isPhone }"
+    :maximized="isPhone"
     transition-show="fade"
     transition-hide="fade"
   >
     <!-- Quasar 只讓 q-dialog 的直接子層 div 接收點擊，所以外面要包 div -->
-    <div class="composer__shell" :style="shellStyle">
+    <div class="composer__shell">
+      <!-- 手機：全螢幕撰寫頁（ux.md M3） -->
       <form
+        v-if="isPhone"
+        class="composer-sheet"
+        :class="{ 'composer-sheet--kb': keyboardOpen }"
+        aria-label="撰寫留言"
+        @submit.prevent="submit"
+      >
+        <div class="composer-sheet__bar">
+          <button type="button" class="btn btn--text btn--muted composer-sheet__cancel" @click="open = false">
+            取消
+          </button>
+          <span class="composer-sheet__title">撰寫留言</span>
+          <button type="submit" class="btn btn--primary composer-sheet__send" :disabled="!canSend">
+            <q-spinner v-if="sending" size="16px" />
+            送出
+          </button>
+        </div>
+        <p v-if="error" class="field__error composer-sheet__error" role="alert">{{ error }}</p>
+        <label for="composer-body-sheet" class="sr-only">留言內容</label>
+        <textarea
+          id="composer-body-sheet"
+          ref="textarea"
+          v-model="body"
+          class="composer-sheet__text"
+          placeholder="寫下你的問題、感動或回應…"
+          :maxlength="LIMITS.postBody + 50"
+        />
+        <div class="composer-sheet__foot">
+          <label class="composer-sheet__nick">
+            <span class="sr-only">暱稱（選填）</span>
+            <input
+              v-model="nickname"
+              class="composer-sheet__nick-input"
+              placeholder="暱稱（選填，不填顯示匿名）"
+              :maxlength="LIMITS.nickname"
+              autocomplete="nickname"
+              enterkeyhint="done"
+            />
+          </label>
+          <span class="composer__count" :class="{ 'composer__count--over': tooLong }">
+            {{ body.length }}/{{ LIMITS.postBody }}
+          </span>
+        </div>
+      </form>
+
+      <!-- 平板：置中對話框 -->
+      <form
+        v-else
         class="composer composer--panel composer--dialog"
         aria-label="撰寫留言"
         @submit.prevent="submit"
@@ -320,42 +374,109 @@ function onKeydown(e: KeyboardEvent) {
 </style>
 
 <style lang="scss">
-// 手機：對話框靠上，鍵盤佔下半部時輸入框與「送出」仍看得到（ux.md M3）。
-// q-dialog 會 teleport 到 body，所以這段不能 scoped。
+// 手機全螢幕撰寫頁（ux.md M3）。q-dialog 會 teleport 到 body，所以這段不能 scoped。
+// 撰寫頁的位置與高度 = 鍵盤以外的可視範圍（--echo-vv-*，由 visualViewport 寫入）。
 .composer-dialog--phone .q-dialog__inner {
-  align-items: flex-start;
-  padding: calc(16px + env(safe-area-inset-top)) 12px 16px;
+  top: var(--echo-vv-top, 0px) !important;
+  bottom: auto !important;
+  height: var(--echo-vv-height, 100dvh) !important;
+  padding: 0 !important;
 
-  // 高度不超過鍵盤以外的可視範圍；空間不夠時縮小輸入框，「送出」永遠看得到
   > .composer__shell {
-    display: flex;
-    flex-direction: column;
-    margin-top: var(--vv-top, 0px);
-    max-height: calc(var(--vv-height, 100dvh) - 32px - env(safe-area-inset-top)) !important;
+    width: 100%;
+    height: 100% !important;
+    max-height: none !important;
     overflow: hidden;
-    border-radius: 8px;
+    border-radius: 0;
+    background: var(--echo-bg);
+  }
+}
+
+.composer-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-top: env(safe-area-inset-top);
+  background: var(--echo-bg);
+
+  &__bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    flex: none;
+    min-height: 56px;
+    padding: 0 12px 0 4px;
+    border-bottom: 1px solid var(--echo-line);
   }
 
-  .composer--dialog {
-    flex: 0 1 auto;
+  &__cancel {
+    justify-self: start;
+  }
+
+  &__title {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  &__send {
+    justify-self: end;
+    min-width: 72px;
+  }
+
+  &__error {
+    flex: none;
+    margin: 0;
+    padding: 8px 16px;
+  }
+
+  // 佔滿剩下的空間；空間再小也只縮輸入框，頂列與暱稱列不動
+  &__text {
+    flex: 1 1 auto;
     min-height: 0;
     width: 100%;
-    max-width: none;
-    padding-bottom: 16px;
+    padding: 16px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 17px;
+    line-height: 1.6;
+    resize: none;
 
-    > .composer__body {
-      display: flex;
-      flex-direction: column;
-      flex: 1 1 auto;
-      min-height: 0;
+    &:focus {
+      outline: none;
     }
   }
 
-  .composer__textarea {
-    flex: 1 1 140px;
-    min-height: 72px;
-    height: auto;
-    resize: none;
+  &__foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: none;
+    padding: 4px 16px calc(4px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--echo-line);
+  }
+
+  // 鍵盤彈出時，底部緊貼鍵盤，不需要 home bar 的安全區域
+  &--kb &__foot {
+    padding-bottom: 4px;
+  }
+
+  &__nick {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__nick-input {
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 16px; // 小於 16px 時 iOS 會自動放大頁面
+
+    &:focus {
+      outline: none;
+    }
   }
 }
 </style>

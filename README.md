@@ -27,7 +27,7 @@ npm run dev                  # http://localhost:9000
 
 ## 資料來源
 
-預設串接 Supabase（真實資料）。第一次設定資料庫與管理帳號請看 [`supabase/README.md`](supabase/README.md)。
+預設串接 Supabase（真實資料）。第一次設定資料庫與管理帳號請看 [`supabase/README.md`](supabase/README.md)；GitHub Pages 部署與綁定網域請看 [`deploy.md`](deploy.md)。
 
 - 會友端：首頁 `/`、場次 `/s/<場次碼>`、放大 `/s/<場次碼>/stage`、固定入口 `/now`
 - 管理端：**會友端沒有任何連結**，請直接輸入網址 `/admin`，輸入管理密碼登入（spec D14）
