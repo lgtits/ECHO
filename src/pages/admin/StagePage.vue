@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoardStore } from '@/stores/board';
 import StageView from '@/components/StageView.vue';
-import ReplyEditor from '@/components/ReplyEditor.vue';
+import ReplySheet from '@/components/ReplySheet.vue';
 import { FILTER_LABEL, SORT_LABEL } from '@/utils/sortFilter';
 import { formatShortDate } from '@/utils/time';
 
@@ -61,18 +61,8 @@ onBeforeUnmount(() => board.endStage());
       @close="close"
       @reply="replyOpen = true"
     />
-    <!-- 文字回覆：送出後回到小卡，頁尾出現「已回應」 -->
-    <q-dialog v-model="replyOpen" :maximized="$q.screen.lt.sm">
-      <div class="reply-dialog">
-        <ReplyEditor
-          v-if="replyPost"
-          :post="replyPost"
-          autofocus
-          @sent="replyOpen = false"
-          @close="replyOpen = false"
-        />
-      </div>
-    </q-dialog>
+    <!-- 文字回覆（與會友撰寫留言相同的面板）：送出後回到小卡，頁尾出現「已回應」 -->
+    <ReplySheet v-if="replyPost" v-model="replyOpen" :post="replyPost" />
   </template>
 </template>
 
@@ -88,13 +78,5 @@ onBeforeUnmount(() => board.endStage());
   align-items: center;
   justify-content: center;
   background: var(--echo-stage);
-}
-
-.reply-dialog {
-  width: 560px;
-  max-width: 100vw;
-  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
-  background: var(--echo-bg);
-  border-radius: 8px;
 }
 </style>

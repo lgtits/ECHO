@@ -26,6 +26,7 @@ const emit = defineEmits<{
   upvote: [];
   reply: [];
   hide: [hidden: boolean];
+  delete: [];
 }>();
 
 const clock = useClock();
@@ -74,6 +75,9 @@ const who = computed(() => props.post.nickname || '匿名');
           @click="emit('hide', !post.isHidden)"
         >
           {{ post.isHidden ? '取消隱藏' : '隱藏' }}
+        </button>
+        <button type="button" class="btn btn--text btn--danger" @click="emit('delete')">
+          刪除
         </button>
       </div>
     </div>

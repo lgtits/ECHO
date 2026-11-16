@@ -9,6 +9,7 @@ import { useSessionsStore } from '@/stores/sessions';
 import { useBreakpoint } from '@/composables/useBreakpoint';
 import PostCard from '@/components/PostCard.vue';
 import ReplyEditor from '@/components/ReplyEditor.vue';
+import ReplySheet from '@/components/ReplySheet.vue';
 import QrShareDialog from '@/components/QrShareDialog.vue';
 import QrImage from '@/components/QrImage.vue';
 import QrProjector from '@/components/QrProjector.vue';
@@ -196,6 +197,27 @@ async function hide(postId: string, hidden: boolean) {
   }
 }
 
+/** 永久刪除無法復原，一定先確認（AC7.4；spec D15） */
+function confirmDelete(postId: string) {
+  $q.dialog({
+    title: '永久刪除這則留言？',
+    message: '留言、附議與回覆都會一起刪除，無法復原。只是不想讓會友看到的話，可以改用「隱藏」。',
+    cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
+    ok: { label: '刪除', flat: true, noCaps: true, color: 'negative' },
+  }).onOk(() => {
+    board
+      .deletePost(postId)
+      .then(() => {
+        if (replyId.value === postId) {
+          replyId.value = null;
+          replyDialog.value = false;
+        }
+        $q.notify({ message: '已刪除留言' });
+      })
+      .catch((e: unknown) => $q.notify({ message: errorMessage(e) }));
+  });
+}
+
 /** 頁首「放大」：從目前篩選與排序的第一則開始（AC9.1） */
 function zoom() {
   board.startStage();
@@ -380,6 +402,7 @@ function showNew() {
             :selected="showPanel && replyId === p.id"
             @reply="openReply(p.id)"
             @hide="hide(p.id, $event)"
+            @delete="confirmDelete(p.id)"
           />
         </TransitionGroup>
       </section>
@@ -403,23 +426,13 @@ function showNew() {
       {{ board.newCount > 0 ? `有 ${board.newCount} 則新留言` : '' }}
     </div>
 
-    <!-- 手機、平板：回覆對話框 -->
-    <q-dialog
-      v-if="!showPanel"
+    <!-- 手機、平板：回覆面板（與會友撰寫留言相同） -->
+    <ReplySheet
+      v-if="!showPanel && replyPost"
       v-model="replyDialog"
-      :maximized="$q.screen.lt.sm"
+      :post="replyPost"
       @hide="replyId = null"
-    >
-      <div class="reply-dialog">
-        <ReplyEditor
-          v-if="replyPost"
-          :post="replyPost"
-          autofocus
-          @sent="replyDialog = false"
-          @close="replyDialog = false"
-        />
-      </div>
-    </q-dialog>
+    />
 
     <QrShareDialog
       v-if="s"
@@ -695,14 +708,6 @@ function showNew() {
   p {
     font-size: 15px;
   }
-}
-
-.reply-dialog {
-  width: 560px;
-  max-width: 100vw;
-  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
-  background: var(--echo-bg);
-  border-radius: 8px;
 }
 
 .pill {

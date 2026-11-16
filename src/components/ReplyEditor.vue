@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 回覆編輯器（ux.md A5；AC6.2、6.3、6.5）。電腦放右側面板，手機／平板由外層包成對話框。
+// 回覆編輯器（ux.md A5；AC6.2、6.3、6.5）：電腦的場次管理頁右側面板。手機、平板與講台模式用 ReplySheet。
 import { computed, nextTick, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { Post } from '@/types/models';

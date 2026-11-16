@@ -96,6 +96,8 @@
 - [ ] **T028** 手機版實機驗收（iOS Safari、Android Chrome、LINE 內建瀏覽器）
 
 - [x] **T111** 會友端移除後台連結（首頁「管理者登入」）、管理端改為只輸入密碼；預設資料來源改為 supabase（spec D14，2026-11-16）
+- [x] **T112** 共用撰寫面板 `ComposeSheet`：會友撰寫留言與管理者回覆（手機、平板、講台模式）外觀一致，高度跟著 `visualViewport`（ux.md M3、A5，2026-11-16）
+- [~] **T113** 管理者刪除留言：migration `20261116010000_staff_delete_posts.sql`（posts DELETE policy）+ pgTAP、PostCard admin「刪除」＋確認對話框（AC7.4、7.5；spec D15）。待在 Supabase 執行 migration `👤`
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 

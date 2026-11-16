@@ -265,6 +265,13 @@ export const useBoardStore = defineStore('board', () => {
     posts.value[id] = p;
   }
 
+  /** 永久刪除（spec D15）；不做樂觀更新，成功才從畫面移除 */
+  async function deletePost(id: string) {
+    await services.posts.remove(id);
+    removeLocal(id);
+    stageIds.value = stageIds.value.filter((x) => x !== id);
+  }
+
   async function addReply(postId: string, body: string) {
     const r = await services.replies.create(postId, body);
     const p = get(postId);
@@ -330,6 +337,7 @@ export const useBoardStore = defineStore('board', () => {
     createPost,
     toggleUpvote,
     setHidden,
+    deletePost,
     addReply,
     updateReply,
     deleteReply,

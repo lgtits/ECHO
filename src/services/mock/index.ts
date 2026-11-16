@@ -401,6 +401,17 @@ export const mockServices: Services = {
       commit();
       return toPost(p, v.uid);
     },
+    async remove(postId) {
+      await delay(150, 300);
+      assertOnline();
+      requireStaff();
+      findPost(postId);
+      const d = db();
+      d.posts = d.posts.filter((p) => p.id !== postId);
+      d.upvotes = d.upvotes.filter((u) => u.postId !== postId);
+      d.replies = d.replies.filter((r) => r.postId !== postId);
+      commit();
+    },
   },
 
   replies: {

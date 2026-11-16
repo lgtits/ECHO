@@ -162,7 +162,7 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 | posts         | SELECT                   | 未隱藏，且所屬場次非草稿（不含 `author_id`）      | 全部（不含 `author_id`）                     |
 |               | INSERT                   | 場次可寫入（`session_is_writable`，trigger 檢查） | ✓                                            |
 |               | UPDATE (`is_hidden`)     | ✗                                                 | ✓                                            |
-|               | DELETE                   | ✗（spec D9）                                      | ✗（只隨場次刪除一起刪，`on delete cascade`） |
+|               | DELETE                   | ✗（spec D9）                                      | ✓（spec D15；附議、回覆 `on delete cascade`） |
 | upvotes       | SELECT                   | 只看自己的（判斷已附議）                          | 只看自己的                                   |
 |               | INSERT / DELETE          | 自己的，且留言可見、場次可寫入                    | 同左                                         |
 | replies       | SELECT                   | 所屬留言可見時                                    | 全部                                         |

@@ -74,6 +74,8 @@ export interface PostsService {
   create(sessionId: string, input: PostInput): Promise<Post>;
   setUpvote(postId: string, on: boolean): Promise<Post>;
   setHidden(postId: string, hidden: boolean): Promise<Post>;
+  /** 管理者永久刪除留言（連同附議與回覆，spec D15） */
+  remove(postId: string): Promise<void>;
 }
 
 export interface RepliesService {

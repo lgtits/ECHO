@@ -317,6 +317,11 @@ export function createSupabaseServices(url: string, key: string): Services {
         check(await db.from('posts').update({ is_hidden: hidden }).eq('id', postId));
         return requirePost(postId);
       },
+      // 附議與回覆由 DB 外鍵一起刪除；trigger 廣播 post_removed 給所有開著的畫面
+      async remove(postId) {
+        check(await db.from('posts').delete().eq('id', postId));
+        known.delete(postId);
+      },
     },
 
     replies: {

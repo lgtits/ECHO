@@ -23,7 +23,10 @@
 
 ## 3. 建立資料表與權限
 
-**SQL Editor** → 貼上 `migrations/20261116000000_init.sql` 全部內容 → Run。
+**SQL Editor** → 依檔名順序，把 `migrations/` 裡每個檔案的全部內容貼上 → Run（每個檔案只跑一次）：
+
+1. `20261116000000_init.sql`
+2. `20261116010000_staff_delete_posts.sql`
 
 （或用 CLI：`npx supabase link --project-ref <ref>` 後 `npx supabase db push`）
 
