@@ -213,7 +213,7 @@ src/
 │  ├─ ReplyEditor.vue        # A5
 │  ├─ QrShareDialog.vue      # A6（含全螢幕投影 QR）
 │  └─ NewPostsPill.vue       # 「↑ N 則新留言」
-├─ layouts/  MemberLayout.vue, AdminLayout.vue（頂端綠色細條）
+├─ layouts/  MemberLayout.vue, AdminLayout.vue（頂端細條）
 └─ pages/
    ├─ IndexPage.vue                 #  /                  輸入場次碼
    ├─ BoardPage.vue                 #  /s/:code           會友留言板（開放中／過去場次共用）

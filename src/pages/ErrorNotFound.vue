@@ -27,7 +27,7 @@ import MemberHeader from '@/components/MemberHeader.vue';
   &__btn {
     margin-top: 20px;
     min-height: 48px;
-    border-radius: 8px;
+    border-radius: var(--echo-radius);
   }
 }
 </style>

@@ -222,7 +222,7 @@ function onKeydown(e: KeyboardEvent, action: () => void) {
 
   &__reply {
     padding: 12px 14px;
-    border-radius: 6px;
+    border-radius: var(--echo-radius);
     background: var(--echo-subtle);
     display: flex;
     flex-direction: column;

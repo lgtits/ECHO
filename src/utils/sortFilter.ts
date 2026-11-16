@@ -6,8 +6,9 @@ export type PostSort = 'newest' | 'top' | 'oldest';
 export type PostFilter = 'all' | 'pending' | 'answered' | 'hidden';
 export type FilterCounts = Record<PostFilter, number>;
 
-export const MEMBER_SORTS: PostSort[] = ['newest', 'top'];
-export const ADMIN_SORTS: PostSort[] = ['top', 'newest', 'oldest'];
+// 選單順序兩端相同：最新、最舊、最多附議（預設值不同，見 board store）
+export const MEMBER_SORTS: PostSort[] = ['newest', 'oldest', 'top'];
+export const ADMIN_SORTS: PostSort[] = ['newest', 'oldest', 'top'];
 
 /** 「全部」放第一個且為預設（D13）；會友看不到已隱藏 */
 export const MEMBER_FILTERS: PostFilter[] = ['all', 'pending', 'answered'];
@@ -15,8 +16,8 @@ export const ADMIN_FILTERS: PostFilter[] = ['all', 'pending', 'answered', 'hidde
 
 export const SORT_LABEL: Record<PostSort, string> = {
   newest: '最新',
-  top: '最多附議',
   oldest: '最舊',
+  top: '最多附議',
 };
 
 export const FILTER_LABEL: Record<PostFilter, string> = {

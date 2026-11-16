@@ -172,12 +172,12 @@ onMounted(load);
   padding-top: 24px;
   padding-bottom: 40px;
 
-
   &__notice {
     margin: 20px 0 0;
     padding: 12px 14px;
-    border-radius: 6px;
-    background: var(--echo-subtle);
+    border: 1px solid var(--echo-line);
+    border-radius: var(--echo-radius-lg);
+    background: var(--echo-bg);
     font-size: 15px;
   }
 
@@ -199,7 +199,7 @@ onMounted(load);
       font-size: 18px;
       font-weight: 400;
       letter-spacing: 0.04em;
-      color: #a3a39d;
+      color: var(--echo-faint);
     }
   }
 
@@ -222,14 +222,31 @@ onMounted(load);
   }
 }
 
+// 場次列表：同一區的列組成一個白色圓角面板
+.hairline {
+  display: none;
+}
+
 .row {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 64px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--echo-line);
+  padding: 12px 16px;
+  border: 1px solid var(--echo-line);
+  border-top: 0;
+  background: var(--echo-bg);
   text-decoration: none;
+
+  .hairline + & {
+    border-top: 1px solid var(--echo-line);
+    border-radius: var(--echo-radius-lg) var(--echo-radius-lg) 0 0;
+  }
+
+  &:last-of-type {
+    border-bottom-left-radius: var(--echo-radius-lg);
+    border-bottom-right-radius: var(--echo-radius-lg);
+  }
 
   &__text {
     flex: 1;

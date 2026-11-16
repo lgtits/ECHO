@@ -15,7 +15,7 @@ import { siteUrl } from '@/utils/config';
 import FilterTabs from '@/components/FilterTabs.vue';
 import { MEMBER_FILTERS, MEMBER_SORTS } from '@/utils/sortFilter';
 import { errorMessage } from '@/utils/errors';
-import { formatHm, formatLongDate } from '@/utils/time';
+import { formatAutoClose, formatLongDate } from '@/utils/time';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -37,7 +37,7 @@ const subtitle = computed(() => {
   if (!s.value) return '';
   const parts = [formatLongDate(s.value.sermonDate)];
   if (s.value.status === 'open' && board.writable && s.value.autoCloseAt) {
-    parts.push(`留言開放至 ${formatHm(new Date(s.value.autoCloseAt))}`);
+    parts.push(`留言開放至 ${formatAutoClose(s.value.autoCloseAt)}`);
   }
   if (closed.value) parts.push('已結束');
   return parts.join(' · ');
@@ -246,7 +246,7 @@ function openComposer() {
   padding: 10px 20px;
   font-size: 14px;
   text-align: center;
-  background: var(--echo-subtle);
+  background: var(--echo-muted-bg);
   border-bottom: 1px solid var(--echo-line);
 
   a {
@@ -296,15 +296,27 @@ function openComposer() {
   min-height: 44px;
   border: 0;
   border-bottom: 1px solid var(--echo-line);
-  background: var(--echo-subtle);
+  background: var(--echo-muted-bg);
   color: var(--echo-primary);
   font-size: 14px;
   cursor: pointer;
 }
 
+// 卡片列表：和上方「全部／待回應」那排留空隙
+.list {
+  padding-top: 12px;
+}
+
 .skeleton {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--echo-line);
+  margin-bottom: 8px;
+  padding: 16px;
+  border: 1px solid var(--echo-line);
+  border-radius: var(--echo-radius-lg);
+  background: var(--echo-bg);
+
+  &:first-child {
+    margin-top: 12px;
+  }
 }
 
 .empty {
@@ -321,10 +333,11 @@ function openComposer() {
   transform: translateX(-50%);
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--echo-border);
+  border: 0;
   border-radius: 999px;
-  background: var(--echo-bg);
-  color: var(--echo-primary);
+  background: var(--echo-primary);
+  color: #fff;
+  box-shadow: var(--echo-float-shadow);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -345,7 +358,7 @@ function openComposer() {
     min-height: 48px;
     padding: 0 16px;
     border: 1px solid var(--echo-border);
-    border-radius: 8px;
+    border-radius: var(--echo-radius);
     background: var(--echo-bg);
     color: var(--echo-muted);
     font-size: 16px;

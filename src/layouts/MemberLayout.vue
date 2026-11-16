@@ -12,6 +12,6 @@
 .member-layout {
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--echo-bg);
+  background: var(--echo-page);
 }
 </style>

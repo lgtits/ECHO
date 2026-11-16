@@ -129,17 +129,26 @@ const who = computed(() => props.post.nickname || '匿名');
 </template>
 
 <style scoped lang="scss">
+// 白色卡片，細框分隔
 .post {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--echo-line);
+  margin-bottom: 8px;
+  padding: 16px;
+  border: 1px solid var(--echo-line);
+  border-radius: var(--echo-radius-lg);
+  background: var(--echo-bg);
 
   &--selected {
+    border-color: var(--echo-primary);
+    box-shadow: inset 0 0 0 1px var(--echo-primary);
+  }
+
+  &--hidden {
     background: var(--echo-subtle);
   }
 
   &--hidden .post__body,
   &--hidden .post__meta {
-    color: #a3a39d;
+    color: var(--echo-faint);
   }
 
   &__main {
@@ -213,7 +222,7 @@ const who = computed(() => props.post.nickname || '匿名');
   &__answered {
     padding: 0 8px;
     font-size: 14px;
-    color: var(--echo-primary);
+    color: var(--echo-success);
     font-weight: 600;
   }
 }
@@ -237,15 +246,17 @@ const who = computed(() => props.post.nickname || '匿名');
   min-width: 64px;
   padding: 0 14px;
   border: 1px solid var(--echo-border);
-  border-radius: 8px;
+  border-radius: var(--echo-radius);
   background: var(--echo-bg);
   font-size: 15px;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 
+  // 已附議：實心深抹茶
   &--on {
     border-color: var(--echo-primary);
-    color: var(--echo-primary);
+    background: var(--echo-primary);
+    color: #fff;
     font-weight: 600;
   }
 
@@ -259,7 +270,7 @@ const who = computed(() => props.post.nickname || '匿名');
 .reply {
   margin-top: 12px;
   padding: 12px 14px;
-  border-radius: 6px;
+  border-radius: var(--echo-radius);
   background: var(--echo-subtle);
 
   &__head {

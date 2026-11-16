@@ -3,7 +3,7 @@
 import { computed, ref } from 'vue';
 import { useSessionsStore } from '@/stores/sessions';
 import type { SessionStatus, SessionSummary } from '@/types/models';
-import { formatHm, formatShortDate } from '@/utils/time';
+import { formatAutoClose, formatShortDate } from '@/utils/time';
 
 const sessions = useSessionsStore();
 
@@ -33,7 +33,7 @@ const list = computed(() =>
 
 const statusText = (s: SessionSummary) =>
   s.status === 'open' && s.autoCloseAt
-    ? `開放中 · ${formatHm(new Date(s.autoCloseAt))} 自動結束`
+    ? `開放中 · ${formatAutoClose(s.autoCloseAt)} 自動結束`
     : STATUS_LABEL[s.status];
 </script>
 
@@ -158,6 +158,14 @@ const statusText = (s: SessionSummary) =>
   color: var(--echo-muted);
 }
 
+// 場次列表放在白色圓角面板裡（Matcha）
+.rows {
+  overflow: hidden;
+  border: 1px solid var(--echo-line);
+  border-radius: var(--echo-radius-lg);
+  background: var(--echo-bg);
+}
+
 .srow {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -167,9 +175,13 @@ const statusText = (s: SessionSummary) =>
   align-items: center;
   column-gap: 12px;
   row-gap: 2px;
-  padding: 14px 0;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--echo-line);
   text-decoration: none;
+
+  &:last-child {
+    border-bottom: 0;
+  }
 
   &__title {
     grid-area: title;

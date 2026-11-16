@@ -1,20 +1,33 @@
-// 設計 token：specs/001-sermon-qa/ux.md §7
+// 設計 token：specs/001-sermon-qa/ux.md §7（白底為主，只借 Astryx「Matcha」的深抹茶當強調色，2026-11-16）
+// 只有淺色，不支援深色模式：color-scheme 固定 light，避免瀏覽器自動把表單元件變深色。
 :root {
-  --echo-bg: #ffffff;
-  --echo-subtle: #f5f5f2;
-  --echo-stage: #efefea;
-  --echo-line: #e6e6e1;
-  --echo-border: #d9d9d3;
-  --echo-text: #1e1e1c;
-  --echo-muted: #6b6b66;
-  --echo-primary: #4f7a63;
-  --echo-danger: #b3261e;
-  --echo-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.07);
+  color-scheme: light;
+
+  --echo-page: #ffffff; // 頁面底色
+  --echo-bg: #ffffff; // 卡片、頁首、面板、輸入框
+  --echo-subtle: #f6f6f3; // 回覆區塊、已隱藏的留言
+  --echo-muted-bg: #f6f6f3; // 提示列（斷線、排序已變動）
+  --echo-stage: #f3f3ef; // 講台模式背景（襯托白色小卡）
+  --echo-line: #e7e7e2; // 分隔線、卡片邊框
+  --echo-border: #d6d6cf; // 次要按鈕、輸入框邊框
+  --echo-text: #1f2019; // 近黑
+  --echo-muted: #63645c; // 次要文字（白底 6:1）
+  --echo-faint: #8c8d85; // 已隱藏的留言、placeholder
+  --echo-primary: #3e481d; // 主要按鈕、選中、已附議、focus
+  --echo-success: #3d7a00; // 已回應、開放中
+  --echo-success-bg: #4d990020;
+  --echo-danger: #cc0000; // 錯誤、刪除
+  --echo-danger-bg: #fd000020;
+  --echo-radius: 12px; // 按鈕、輸入框
+  --echo-radius-sm: 6px; // 卡片內的小區塊
+  --echo-radius-lg: 18px; // 卡片、面板
+  --echo-card-shadow: 0 4px 6px #3e481d1a, 0 12px 24px #3e481d26; // 講台小卡
+  --echo-float-shadow: 0 2px 4px #3e481d0d, 0 4px 12px #3e481d1a; // 浮動提示
   --echo-content-max: 720px;
 }
 
 body {
-  background: var(--echo-bg);
+  background: var(--echo-page);
   color: var(--echo-text);
   font-size: 17px;
   line-height: 1.6;
@@ -26,7 +39,7 @@ body {
   color: var(--echo-muted);
 }
 
-// ── 基礎元素（ux.md §7：白底、黑字、一個綠色；陰影只留給講台小卡）
+// ── 基礎元素（ux.md §7：白底、灰字、深抹茶只當強調色）
 
 *,
 *::before,
@@ -58,12 +71,12 @@ button {
 }
 
 .q-notification {
-  border-radius: 8px;
+  border-radius: var(--echo-radius);
   box-shadow: none;
   font-size: 15px;
 }
 
-// ── 按鈕：主要（綠底白字）、次要（白底灰框）、文字
+// ── 按鈕：主要（深抹茶底白字）、次要（白底灰框）、文字
 
 .btn {
   display: inline-flex;
@@ -72,7 +85,7 @@ button {
   gap: 6px;
   min-height: 44px;
   padding: 0 18px;
-  border-radius: 8px;
+  border-radius: var(--echo-radius);
   border: 1px solid transparent;
   background: transparent;
   font-size: 15px;
@@ -151,7 +164,7 @@ button {
   min-height: 48px;
   padding: 10px 14px;
   border: 1px solid var(--echo-border);
-  border-radius: 8px;
+  border-radius: var(--echo-radius);
   background: var(--echo-bg);
   color: var(--echo-text);
   font: inherit;
@@ -212,11 +225,11 @@ textarea.input {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #b5b5ae;
+  background: var(--echo-faint);
   flex-shrink: 0;
 
   &--open {
-    background: var(--echo-primary);
+    background: var(--echo-success);
   }
 
   &--draft {

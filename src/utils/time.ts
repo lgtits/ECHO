@@ -23,6 +23,12 @@ export function formatPostTime(iso: string, now: Date = new Date()): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${formatHm(d)}`;
 }
 
+/** 自動結束時間：今天只顯示 12:30，其他天顯示 11/23 12:30 */
+export function formatAutoClose(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  return sameDay(d, now) ? formatHm(d) : `${d.getMonth() + 1}/${d.getDate()} ${formatHm(d)}`;
+}
+
 /** 'YYYY-MM-DD' → 本地日期（不受時區影響） */
 export function parseDate(ymd: string): Date {
   const [y, m, d] = ymd.split('-').map(Number);

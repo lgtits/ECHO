@@ -247,7 +247,7 @@ defineExpose({ focus });
     max-width: 100% !important;
     height: min(560px, 100%);
     max-height: 100% !important;
-    border-radius: 8px;
+    border-radius: var(--echo-radius);
   }
 }
 </style>

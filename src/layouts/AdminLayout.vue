@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 管理端版型（ux.md §1.3、§2.1）：頂端 3px 綠色細條＋「ECHO 管理」；≥ 1280px 改為左側欄。
+// 管理端版型（ux.md §1.3、§2.1）：頂端 3px 深抹茶細條＋「ECHO 管理」；≥ 1280px 改為左側欄。
 import { onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useBreakpoint } from '@/composables/useBreakpoint';
@@ -50,11 +50,11 @@ watch(
 
 <style scoped lang="scss">
 .admin {
-  // 固定在頂端的區塊總高度：綠色細條 3px＋頂部列 56px（≥1280px 改用側欄，只剩細條）
+  // 固定在頂端的區塊總高度：頂端細條 3px＋頂部列 56px（≥1280px 改用側欄，只剩細條）
   --admin-top: 59px;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--echo-bg);
+  background: var(--echo-page);
 
   @media (min-width: 1280px) {
     --admin-top: 3px;
@@ -98,7 +98,7 @@ watch(
     margin-right: auto;
 
     span {
-      color: var(--echo-primary);
+      color: var(--echo-muted);
     }
   }
 

@@ -115,9 +115,10 @@ export const useBoardStore = defineStore('board', () => {
     const isNew = !posts.value[p.id];
     posts.value[p.id] = p;
     if (orderIds.value.includes(p.id) || pendingNewIds.value.includes(p.id)) return;
-    if (opts.own)
-      orderIds.value.unshift(p.id); // 自己的留言送出後直接出現在最上方
-    else if (!isNew || atTop.value) insertSorted(p.id);
+    // 自己的留言送出後直接出現在最上方；「最舊」排序則照順序放在最下方
+    if (opts.own && sort.value !== 'oldest') orderIds.value.unshift(p.id);
+    // 「最舊」排序的新留言加在最下方，不會推動正在看的內容，所以直接插入、不顯示「↑ N 則新留言」
+    else if (!isNew || atTop.value || sort.value === 'oldest') insertSorted(p.id);
     else pendingNewIds.value.push(p.id);
     if (isNew && stageActive.value && matchesFilter(p, filter.value)) stageIds.value.push(p.id);
   }

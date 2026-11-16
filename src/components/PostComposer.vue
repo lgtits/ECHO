@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 撰寫留言（ux.md M3）：手機、平板用撰寫面板（ComposeSheet，與管理者回覆共用），
 // 電腦直接展開在列表上方。
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useBoardStore } from '@/stores/board';
 import { LIMITS } from '@/types/models';
@@ -71,7 +71,12 @@ async function submit() {
     body.value = '';
     open.value = false;
     $q.notify({ message: '已送出，謝謝你的回應' });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // 捲到自己的留言：「最舊」排序在最下方，其他排序在最上方
+    await nextTick();
+    window.scrollTo({
+      top: board.sort === 'oldest' ? document.documentElement.scrollHeight : 0,
+      behavior: 'smooth',
+    });
   } catch (e) {
     error.value = errorMessage(e); // 失敗時保留內容（ux.md M3）
   } finally {
@@ -161,7 +166,7 @@ function onKeydown(e: KeyboardEvent) {
 
   &__box {
     border: 1px solid var(--echo-border);
-    border-radius: 8px;
+    border-radius: var(--echo-radius);
     background: var(--echo-bg);
 
     &:focus-within {
@@ -175,7 +180,7 @@ function onKeydown(e: KeyboardEvent) {
     min-height: 88px;
     padding: 14px 16px 6px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--echo-radius);
     background: transparent;
     font: inherit;
     font-size: 17px;

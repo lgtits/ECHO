@@ -79,7 +79,7 @@ onMounted(async () => {
 .login {
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--echo-bg);
+  background: var(--echo-page);
 
   &__strip {
     height: 3px;
@@ -98,7 +98,7 @@ onMounted(async () => {
     font-weight: 600;
 
     span {
-      color: var(--echo-primary);
+      color: var(--echo-muted);
     }
   }
 
@@ -117,8 +117,9 @@ onMounted(async () => {
   &__demo {
     margin-top: 28px;
     padding: 12px 14px;
-    border-radius: 6px;
-    background: var(--echo-subtle);
+    border: 1px solid var(--echo-line);
+    border-radius: var(--echo-radius-lg);
+    background: var(--echo-bg);
     font-size: 14px;
     line-height: 1.7;
 

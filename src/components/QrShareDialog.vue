@@ -115,7 +115,7 @@ async function copy() {
   max-width: 100%;
   padding: 20px 24px 24px;
   background: var(--echo-bg);
-  border-radius: 8px;
+  border-radius: var(--echo-radius);
 
   &__head {
     display: flex;
@@ -138,7 +138,7 @@ async function copy() {
     gap: 12px;
     padding: 12px 14px;
     border: 1px solid var(--echo-border);
-    border-radius: 6px;
+    border-radius: var(--echo-radius-sm);
     font-size: 15px;
 
     span {

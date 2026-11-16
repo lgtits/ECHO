@@ -8,7 +8,8 @@ import { useSessionsStore } from '@/stores/sessions';
 import { useBoardStore } from '@/stores/board';
 import { LIMITS } from '@/types/models';
 import { errorMessage } from '@/utils/errors';
-import { formatHm, nextSunday, parseDate } from '@/utils/time';
+import { nextSunday } from '@/utils/time';
+import AutoClosePicker from '@/components/AutoClosePicker.vue';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -18,6 +19,8 @@ const board = useBoardStore();
 
 const editId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null));
 const isEdit = computed(() => !!editId.value);
+/** 「先存成草稿」暫時不開放（spec D17）；要恢復時改成 true */
+const SHOW_DRAFT = false;
 
 const open = ref(true);
 const loading = ref(isEdit.value);
@@ -29,15 +32,17 @@ const title = ref('');
 const sermonDate = ref(nextSunday());
 const speaker = ref('');
 const scripture = ref('');
-const autoCloseTime = ref(''); // HH:mm，空白 = 不自動結束
+const autoCloseAt = ref<string | null>(null); // ISO，null = 不自動結束
+const initialAutoClose = ref<string | null>(null);
+/** 只在改了自動結束時間時才檢查「已經過了」，避免擋住已結束場次的其他修改 */
+const autoCloseChanged = computed(() => autoCloseAt.value !== initialAutoClose.value);
+const autoClosePast = computed(
+  () =>
+    autoCloseChanged.value &&
+    !!autoCloseAt.value &&
+    new Date(autoCloseAt.value).getTime() <= Date.now(),
+);
 const speakers = ref<string[]>([]);
-
-/** 15 分鐘為單位（ux.md A3） */
-const timeOptions = Array.from({ length: 96 }, (_, i) => {
-  const h = String(Math.floor(i / 4)).padStart(2, '0');
-  const m = String((i % 4) * 15).padStart(2, '0');
-  return `${h}:${m}`;
-});
 
 const titleError = computed(() => {
   if (!touched.value) return '';
@@ -49,21 +54,13 @@ const valid = computed(
   () => !!title.value.trim() && title.value.length <= LIMITS.sessionTitle && !!sermonDate.value,
 );
 
-function autoCloseIso(): string | null {
-  if (!autoCloseTime.value) return null;
-  const d = parseDate(sermonDate.value);
-  const [h, m] = autoCloseTime.value.split(':').map(Number);
-  d.setHours(h ?? 0, m ?? 0, 0, 0);
-  return d.toISOString();
-}
-
 function input() {
   return {
     title: title.value.trim(),
     sermonDate: sermonDate.value,
     speaker: speaker.value.trim() || null,
     scripture: scripture.value.trim() || null,
-    autoCloseAt: autoCloseIso(),
+    autoCloseAt: autoCloseAt.value,
   };
 }
 
@@ -76,6 +73,7 @@ function onHide() {
 async function submit(kind: 'open' | 'draft' | 'save') {
   touched.value = true;
   if (!valid.value || saving.value) return;
+  if (autoClosePast.value) return;
   saving.value = kind;
   error.value = '';
   try {
@@ -104,7 +102,8 @@ onMounted(async () => {
       sermonDate.value = s.sermonDate;
       speaker.value = s.speaker ?? '';
       scripture.value = s.scripture ?? '';
-      autoCloseTime.value = s.autoCloseAt ? formatHm(new Date(s.autoCloseAt)) : '';
+      autoCloseAt.value = s.autoCloseAt;
+      initialAutoClose.value = s.autoCloseAt;
     }
     loading.value = false;
   } else {
@@ -181,24 +180,12 @@ onMounted(async () => {
             />
           </div>
 
-          <div class="field">
-            <label for="f-close" class="field__label">自動結束時間</label>
-            <div class="edit__row">
-              <select id="f-close" v-model="autoCloseTime" class="input">
-                <option value="">不自動結束</option>
-                <option v-for="t in timeOptions" :key="t" :value="t">{{ t }}</option>
-              </select>
-              <button
-                v-if="autoCloseTime"
-                type="button"
-                class="btn btn--text btn--muted"
-                @click="autoCloseTime = ''"
-              >
-                清除
-              </button>
-            </div>
-            <span class="field__hint">到時間後自動結束留言，日期與場次日期相同；可以不設。</span>
-          </div>
+          <AutoClosePicker
+            v-model="autoCloseAt"
+            :default-date="sermonDate"
+            :check-past="autoCloseChanged"
+            id-prefix="f-close"
+          />
 
           <p v-if="error" class="field__error" role="alert">{{ error }}</p>
         </div>
@@ -220,6 +207,7 @@ onMounted(async () => {
               建立並開放留言
             </button>
             <button
+              v-if="SHOW_DRAFT"
               type="button"
               class="btn btn--secondary btn--block btn--lg"
               :disabled="!!saving"
@@ -273,15 +261,6 @@ onMounted(async () => {
     padding: 24px;
   }
 
-  &__row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .input {
-      flex: 1;
-    }
-  }
 
   &__foot {
     display: flex;

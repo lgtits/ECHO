@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatLongDate, formatPostTime, formatShortDate, nextSunday } from './time';
+import {
+  formatAutoClose,
+  formatLongDate,
+  formatPostTime,
+  formatShortDate,
+  nextSunday,
+} from './time';
 
 describe('formatPostTime', () => {
   const now = new Date(2026, 10, 8, 11, 30); // 2026/11/8 11:30（主日）
@@ -38,5 +44,17 @@ describe('日期', () => {
 
   it('下一個主日：週六 → 隔天', () => {
     expect(nextSunday(new Date(2026, 10, 7))).toBe('2026-11-08');
+  });
+});
+
+describe('formatAutoClose', () => {
+  const now = new Date(2026, 10, 8, 11, 30);
+
+  it('今天只顯示時間', () => {
+    expect(formatAutoClose(new Date(2026, 10, 8, 12, 30).toISOString(), now)).toBe('12:30');
+  });
+
+  it('其他天加上日期', () => {
+    expect(formatAutoClose(new Date(2026, 10, 15, 9, 0).toISOString(), now)).toBe('11/15 09:00');
   });
 });

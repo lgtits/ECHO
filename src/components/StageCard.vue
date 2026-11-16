@@ -51,7 +51,7 @@ const size = computed(() => {
   flex-direction: column;
   padding: 24px 22px 18px;
   background: #fff;
-  border-radius: 6px;
+  border-radius: var(--echo-radius-lg);
   box-shadow: var(--echo-card-shadow);
   color: var(--echo-text);
 
@@ -100,7 +100,7 @@ const size = computed(() => {
   }
 
   &__answered {
-    color: var(--echo-primary);
+    color: var(--echo-success);
     font-weight: 600;
   }
 

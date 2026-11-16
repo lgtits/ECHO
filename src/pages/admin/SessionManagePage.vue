@@ -18,7 +18,9 @@ import { ADMIN_FILTERS, ADMIN_SORTS } from '@/utils/sortFilter';
 import { buildSessionUrl } from '@/utils/sessionUrl';
 import { displayUrl, siteUrl } from '@/utils/config';
 import { errorMessage } from '@/utils/errors';
-import { formatHm, formatShortDate, parseDate } from '@/utils/time';
+import { formatAutoClose, formatShortDate, toYmd } from '@/utils/time';
+import { useClock } from '@/composables/useClock';
+import AutoClosePicker from '@/components/AutoClosePicker.vue';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -29,6 +31,7 @@ const { isDesktop, isPhone } = useBreakpoint();
 
 const id = computed(() => String(route.params.id ?? ''));
 const s = computed(() => board.session);
+const clock = useClock();
 const url = computed(() => (s.value ? buildSessionUrl(siteUrl(), s.value.code) : ''));
 
 const shareOpen = ref(false);
@@ -47,7 +50,9 @@ const statusText = computed(() => {
   if (!x) return '';
   if (x.status === 'draft') return '草稿';
   if (!board.writable) return '已結束 · 仍可補充回覆';
-  return x.autoCloseAt ? `開放中 · ${formatHm(new Date(x.autoCloseAt))} 自動結束` : '開放中';
+  return x.autoCloseAt
+    ? `開放中 · ${formatAutoClose(x.autoCloseAt, new Date(clock.value))} 自動結束`
+    : '開放中';
 });
 const dotClass = computed(() => {
   if (s.value?.status === 'draft') return 'status-dot--draft';
@@ -96,37 +101,40 @@ function endSession() {
   }).onOk(() => void setStatus('closed'));
 }
 
+// 快速設定自動結束（ux.md A3、A4）：日期＋時間，與場次表單共用 AutoClosePicker
+const autoOpen = ref(false);
+const autoDraft = ref<string | null>(null);
+const autoSaving = ref(false);
+/** 還沒選日期時的預設：場次日期，已經過了就用今天 */
+const autoDefaultDate = computed(() => {
+  const today = toYmd(new Date(clock.value));
+  const d = s.value?.sermonDate ?? today;
+  return d < today ? today : d;
+});
+const autoPast = computed(
+  () => !!autoDraft.value && new Date(autoDraft.value).getTime() <= clock.value,
+);
+
 function autoCloseDialog() {
   if (!s.value) return;
-  const current = s.value.autoCloseAt ? formatHm(new Date(s.value.autoCloseAt)) : '';
-  const items = [{ label: '不自動結束', value: '' }];
-  for (let i = 24; i < 96; i++) {
-    const t = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`;
-    items.push({ label: t, value: t });
-  }
-  $q.dialog({
-    title: '設定自動結束',
-    message: '到時間後自動結束留言（場次當天）。',
-    options: { type: 'radio', model: current, items },
-    cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
-    ok: { label: '儲存', flat: true, noCaps: true, color: 'primary' },
-  }).onOk((value: string) => void saveAutoClose(value));
+  autoDraft.value = s.value.autoCloseAt;
+  autoOpen.value = true;
 }
 
-async function saveAutoClose(value: string) {
-  if (!s.value) return;
-  let iso: string | null = null;
-  if (value) {
-    const d = parseDate(s.value.sermonDate);
-    const [h, m] = value.split(':').map(Number);
-    d.setHours(h ?? 0, m ?? 0, 0, 0);
-    iso = d.toISOString();
-  }
+async function saveAutoClose() {
+  if (!s.value || autoPast.value || autoSaving.value) return;
+  autoSaving.value = true;
+  const iso = autoDraft.value;
   try {
     board.setSession(await sessions.setAutoClose(s.value.id, iso));
-    $q.notify({ message: iso ? `將於 ${value} 自動結束` : '已取消自動結束' });
+    autoOpen.value = false;
+    $q.notify({
+      message: iso ? `將於 ${formatAutoClose(iso, new Date())} 自動結束` : '已取消自動結束',
+    });
   } catch (e) {
     $q.notify({ message: errorMessage(e) });
+  } finally {
+    autoSaving.value = false;
   }
 }
 
@@ -451,6 +459,24 @@ function showNew() {
       :opening="statusBusy"
       @open-session="setStatus('open')"
     />
+    <q-dialog v-if="s" v-model="autoOpen">
+      <form class="auto-dialog" @submit.prevent="saveAutoClose">
+        <h2 class="auto-dialog__title">設定自動結束</h2>
+        <p class="auto-dialog__text text-muted">到時間後自動結束留言，可以設定在其他天。</p>
+        <AutoClosePicker
+          v-model="autoDraft"
+          :default-date="autoDefaultDate"
+          id-prefix="quick-close"
+        />
+        <div class="auto-dialog__actions">
+          <button type="button" class="btn btn--text" @click="autoOpen = false">取消</button>
+          <button type="submit" class="btn btn--primary" :disabled="autoPast || autoSaving">
+            <q-spinner v-if="autoSaving" size="16px" />
+            儲存
+          </button>
+        </div>
+      </form>
+    </q-dialog>
     <QrProjector
       v-if="s && projecting"
       :url="url"
@@ -464,6 +490,32 @@ function showNew() {
 </template>
 
 <style scoped lang="scss">
+.auto-dialog {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  padding: 20px;
+  border-radius: var(--echo-radius-lg);
+  background: var(--echo-bg);
+
+  &__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  &__text {
+    margin: 4px 0 16px;
+    font-size: 14px;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+  }
+}
+
 .missing {
   padding: 48px 24px;
 
@@ -482,7 +534,7 @@ function showNew() {
   font-size: 14px;
   text-align: center;
   color: var(--echo-muted);
-  background: var(--echo-subtle);
+  background: var(--echo-muted-bg);
   border-bottom: 1px solid var(--echo-line);
 }
 
@@ -643,7 +695,7 @@ function showNew() {
   gap: 12px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--echo-line);
-  background: var(--echo-subtle);
+  background: var(--echo-muted-bg);
   font-size: 15px;
 
   span {
@@ -668,6 +720,7 @@ function showNew() {
     height: calc(100vh - var(--admin-top, 3px) - 65px);
     padding: 24px;
     border-left: 1px solid var(--echo-line);
+    background: var(--echo-bg);
     overflow-y: auto;
   }
 }
@@ -682,9 +735,9 @@ function showNew() {
   padding: 0 20px;
 }
 
-.list :deep(.post) {
-  padding-left: 20px;
-  padding-right: 20px;
+// 卡片列表：和上方「全部／待回應」那排、左右邊緣都留空隙
+.list {
+  padding: 12px 20px 24px; // 卡片左緣對齊 tabs 文字
 }
 
 .stale {
@@ -693,15 +746,18 @@ function showNew() {
   min-height: 44px;
   border: 0;
   border-bottom: 1px solid var(--echo-line);
-  background: var(--echo-subtle);
+  background: var(--echo-muted-bg);
   color: var(--echo-primary);
   font-size: 14px;
   cursor: pointer;
 }
 
 .skeleton {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--echo-line);
+  margin-bottom: 8px;
+  padding: 16px;
+  border: 1px solid var(--echo-line);
+  border-radius: var(--echo-radius-lg);
+  background: var(--echo-bg);
 }
 
 .empty {
@@ -728,10 +784,11 @@ function showNew() {
   transform: translateX(-50%);
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--echo-border);
+  border: 0;
   border-radius: 999px;
-  background: var(--echo-bg);
-  color: var(--echo-primary);
+  background: var(--echo-primary);
+  color: #fff;
+  box-shadow: var(--echo-float-shadow);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

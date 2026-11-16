@@ -79,7 +79,7 @@ const groups = computed(() => [
     text-decoration: none;
 
     span {
-      color: var(--echo-primary);
+      color: var(--echo-muted);
     }
   }
 
