@@ -22,8 +22,10 @@ export default defineConfig((/* ctx */) => {
     boot: [],
 
     // index.html 以 <%= publicPath %> 引用 favicon，深層網址（/s/XXXX）才不會找錯路徑
+    // siteUrl：分享連結預覽圖（og:image）必須是完整網址；建置時由 QCLI_SITE_URL 提供（deploy.yml）
     htmlVariables: {
       publicPath: basePath,
+      siteUrl: (process.env.QCLI_SITE_URL ?? '').replace(/\/+$/, ''),
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css

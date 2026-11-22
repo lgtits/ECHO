@@ -91,8 +91,9 @@ async function setStatus(next: 'open' | 'closed') {
   }
 }
 
-/** 「結束留言」需要確認；「開放留言」不需要（ux.md A4） */
+/** 「結束留言」在「設定結束時間」對話框裡，需要確認；「開放留言」不需要（ux.md A4） */
 function endSession() {
+  autoOpen.value = false;
   $q.dialog({
     title: '結束留言？',
     message: '結束後會友只能瀏覽，不能再留言或附議。你之後仍可補充回覆，也可以重新開放。',
@@ -283,10 +284,10 @@ function showNew() {
         <button
           v-if="board.writable"
           type="button"
-          class="btn btn--text bar__auto"
+          class="btn btn--secondary bar__auto"
           @click="autoCloseDialog"
         >
-          {{ s.autoCloseAt ? '修改' : '設定自動結束' }}
+          {{ s.autoCloseAt ? '修改結束時間' : '設定結束時間' }}
         </button>
       </div>
       <div v-if="s" class="bar__actions">
@@ -302,16 +303,7 @@ function showNew() {
         </button>
         <button type="button" class="btn btn--secondary" @click="shareOpen = true">分享 QR</button>
         <button
-          v-if="board.writable"
-          type="button"
-          class="btn btn--secondary"
-          :disabled="statusBusy"
-          @click="endSession"
-        >
-          結束留言
-        </button>
-        <button
-          v-else
+          v-if="!board.writable"
           type="button"
           class="btn btn--secondary"
           :disabled="statusBusy"
@@ -319,13 +311,13 @@ function showNew() {
         >
           {{ s.status === 'draft' ? '開放留言' : '重新開放' }}
         </button>
+        <router-link :to="`/admin/sessions/${s.id}/edit`" class="btn btn--secondary">
+          編輯場次資訊
+        </router-link>
         <button type="button" class="btn btn--secondary bar__more" aria-label="更多操作">
           ⋯
           <q-menu anchor="bottom right" self="top right">
             <q-list style="min-width: 200px">
-              <q-item v-close-popup clickable :to="`/admin/sessions/${s.id}/edit`">
-                <q-item-section>編輯場次資訊</q-item-section>
-              </q-item>
               <q-item v-close-popup clickable :to="`/s/${s.code}`">
                 <q-item-section>前往會友留言板</q-item-section>
               </q-item>
@@ -461,7 +453,7 @@ function showNew() {
     />
     <q-dialog v-if="s" v-model="autoOpen">
       <form class="auto-dialog" @submit.prevent="saveAutoClose">
-        <h2 class="auto-dialog__title">設定自動結束</h2>
+        <h2 class="auto-dialog__title">設定結束時間</h2>
         <p class="auto-dialog__text text-muted">到時間後自動結束留言，可以設定在其他天。</p>
         <AutoClosePicker
           v-model="autoDraft"
@@ -469,6 +461,14 @@ function showNew() {
           id-prefix="quick-close"
         />
         <div class="auto-dialog__actions">
+          <button
+            type="button"
+            class="btn btn--text btn--danger auto-dialog__end"
+            :disabled="statusBusy"
+            @click="endSession"
+          >
+            立即結束留言
+          </button>
           <button type="button" class="btn btn--text" @click="autoOpen = false">取消</button>
           <button type="submit" class="btn btn--primary" :disabled="autoPast || autoSaving">
             <q-spinner v-if="autoSaving" size="16px" />
@@ -513,6 +513,12 @@ function showNew() {
     justify-content: flex-end;
     gap: 8px;
     margin-top: 20px;
+  }
+
+  // 立即結束放左邊，與「取消／儲存」分開，避免誤按
+  &__end {
+    margin-right: auto;
+    margin-left: -12px;
   }
 }
 
@@ -595,13 +601,14 @@ function showNew() {
 
   &__auto {
     min-height: 36px;
-    padding: 0 8px;
+    margin-left: 6px;
+    padding: 0 12px;
     font-size: 14px;
-    color: var(--echo-primary);
   }
 
   &__actions {
     display: flex;
+    flex-wrap: wrap; // 手機上已結束時有四顆按鈕，放不下就換行
     gap: 8px;
     flex: 1 1 100%;
 

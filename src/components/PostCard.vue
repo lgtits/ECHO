@@ -4,7 +4,6 @@
 import { computed } from 'vue';
 import ClampText from './ClampText.vue';
 import type { Post } from '@/types/models';
-import { isAnswered } from '@/utils/sortFilter';
 import { formatHm, formatPostTime } from '@/utils/time';
 import { useClock } from '@/composables/useClock';
 
@@ -32,7 +31,6 @@ const emit = defineEmits<{
 
 const clock = useClock();
 const time = computed(() => formatPostTime(props.post.createdAt, new Date(clock.value)));
-const answered = computed(() => isAnswered(props.post));
 const who = computed(() => props.post.nickname || '匿名');
 </script>
 
@@ -118,12 +116,6 @@ const who = computed(() => props.post.nickname || '匿名');
       >
         ↑ {{ post.upvoteCount }}<span v-if="post.upvotedByMe"> 已附議</span>
       </button>
-      <span class="post__spacer" />
-      <span v-if="answered" class="post__answered">已回應</span>
-    </div>
-    <div v-else-if="answered" class="post__footer post__footer--admin">
-      <span class="post__spacer" />
-      <span class="post__answered">已回應</span>
     </div>
   </article>
 </template>
@@ -209,21 +201,6 @@ const who = computed(() => props.post.nickname || '匿名');
     align-items: center;
     gap: 4px;
     margin-top: 10px;
-
-    &--admin {
-      margin-top: 6px;
-    }
-  }
-
-  &__spacer {
-    flex: 1;
-  }
-
-  &__answered {
-    padding: 0 8px;
-    font-size: 14px;
-    color: var(--echo-success);
-    font-weight: 600;
   }
 }
 

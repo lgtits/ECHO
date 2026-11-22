@@ -23,10 +23,8 @@ export type BoardStatus = 'idle' | 'loading' | 'ready' | 'not_found' | 'error';
 const PREF_KEY = (mode: BoardMode) => `echo.board.${mode}`;
 
 function loadPrefs(mode: BoardMode): { sort: PostSort; filter: PostFilter } {
-  const fallback =
-    mode === 'admin'
-      ? { sort: 'top' as PostSort, filter: 'all' as PostFilter } // A4 預設「全部＋最多附議」（D13）
-      : { sort: 'newest' as PostSort, filter: 'all' as PostFilter };
+  // 會友端、管理端都預設「全部＋最新」（D13；管理端 2026-11-22 由「最多附議」改為「最新」）
+  const fallback: { sort: PostSort; filter: PostFilter } = { sort: 'newest', filter: 'all' };
   try {
     const raw = sessionStorage.getItem(PREF_KEY(mode));
     return raw ? { ...fallback, ...(JSON.parse(raw) as object) } : fallback;
