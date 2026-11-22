@@ -4,7 +4,7 @@
 
 import { REALTIME_SUBSCRIBE_STATES, createClient, type User } from '@supabase/supabase-js';
 import type { Post, Session, SessionSummary, Viewer } from '@/types/models';
-import { LIMITS } from '@/types/models';
+import { DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
 import { ServiceError } from '../types';
 import type { ConnectionState, Services, SessionEventHandlers } from '../types';
 import { check, toServiceError } from './errors';
@@ -325,13 +325,15 @@ export function createSupabaseServices(url: string, key: string): Services {
     },
 
     replies: {
-      async create(postId, body) {
+      async create(postId, body, authorName) {
         const text = body.trim();
-        if (!text || text.length > LIMITS.replyBody) throw new ServiceError('invalid_input');
+        const name = authorName.trim();
+        if (!text || text.length > LIMITS.replyBody || name.length > LIMITS.replyAuthor)
+          throw new ServiceError('invalid_input');
         const row = check(
           await db
             .from('replies')
-            .insert({ post_id: postId, body: text })
+            .insert({ post_id: postId, body: text, author_name: name || DEFAULT_REPLY_AUTHOR })
             .select(REPLY_COLUMNS)
             .single<ReplyRow>(),
         );

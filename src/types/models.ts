@@ -75,11 +75,15 @@ export interface PostInput {
   nickname: string | null;
 }
 
+/** 回應者名稱留空時顯示的名稱（spec AC6.2、D18；DB trigger 同值） */
+export const DEFAULT_REPLY_AUTHOR = '牧者';
+
 /** 限制值（spec AC2.1、AC2.3、AC6.2；DB 端以 check / trigger 強制） */
 export const LIMITS = {
   postBody: 500,
   nickname: 20,
   replyBody: 2000,
+  replyAuthor: 20,
   sessionTitle: 100,
   postsPerMinute: 5,
   pastPageSize: 20,

@@ -273,8 +273,8 @@ export const useBoardStore = defineStore('board', () => {
     stageIds.value = stageIds.value.filter((x) => x !== id);
   }
 
-  async function addReply(postId: string, body: string) {
-    const r = await services.replies.create(postId, body);
+  async function addReply(postId: string, body: string, authorName: string) {
+    const r = await services.replies.create(postId, body, authorName);
     const p = get(postId);
     if (p && !p.replies.some((x) => x.id === r.id))
       posts.value[postId] = { ...p, replies: [...p.replies, r] };

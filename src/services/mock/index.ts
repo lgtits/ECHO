@@ -1,7 +1,7 @@
 // 假資料實作（plan §6.1）。只模擬畫面需要的行為；真正的權限在 Phase 2 以 RLS 實作。
 
 import type { Post, Reply, Session, SessionSummary, Viewer } from '@/types/models';
-import { LIMITS } from '@/types/models';
+import { DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
 import { ServiceError } from '../types';
 import type { ConnectionState, Services, SessionEventHandlers } from '../types';
 import type { DbPost, DbSession } from './db';
@@ -415,12 +415,14 @@ export const mockServices: Services = {
   },
 
   replies: {
-    async create(postId, body) {
+    async create(postId, body, authorName) {
       await delay(250, 500);
       assertOnline();
       const v = requireStaff();
       const text = body.trim();
-      if (!text || text.length > LIMITS.replyBody) throw new ServiceError('invalid_input');
+      const name = authorName.trim();
+      if (!text || text.length > LIMITS.replyBody || name.length > LIMITS.replyAuthor)
+        throw new ServiceError('invalid_input');
       const p = findPost(postId);
       const now = new Date().toISOString();
       const r = {
@@ -428,7 +430,7 @@ export const mockServices: Services = {
         postId,
         sessionId: p.sessionId,
         authorId: v.uid,
-        authorName: v.staff.displayName,
+        authorName: name || DEFAULT_REPLY_AUTHOR,
         body: text,
         createdAt: now,
         updatedAt: now,

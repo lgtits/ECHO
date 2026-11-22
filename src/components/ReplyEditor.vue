@@ -3,11 +3,12 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { Post } from '@/types/models';
-import { LIMITS } from '@/types/models';
+import { DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
 import { useAuthStore } from '@/stores/auth';
 import { useBoardStore } from '@/stores/board';
 import { errorMessage } from '@/utils/errors';
 import { formatPostTime } from '@/utils/time';
+import { useReplyAuthor } from '@/composables/useReplyAuthor';
 
 const props = defineProps<{ post: Post; autofocus?: boolean }>();
 const emit = defineEmits<{ sent: []; close: [] }>();
@@ -15,6 +16,7 @@ const emit = defineEmits<{ sent: []; close: [] }>();
 const $q = useQuasar();
 const auth = useAuthStore();
 const board = useBoardStore();
+const authorName = useReplyAuthor();
 
 const body = ref('');
 const sending = ref(false);
@@ -45,7 +47,7 @@ async function send() {
   sending.value = true;
   error.value = '';
   try {
-    await board.addReply(props.post.id, body.value);
+    await board.addReply(props.post.id, body.value, authorName.value);
     body.value = '';
     $q.notify({ message: '已送出回覆' });
     emit('sent');
@@ -157,6 +159,16 @@ function onKeydown(e: KeyboardEvent, action: () => void) {
         :class="{ 'input--invalid': tooLong }"
         @keydown="onKeydown($event, send)"
       />
+      <label class="editor__author">
+        <span class="editor__author-label">回應者</span>
+        <input
+          v-model="authorName"
+          class="input editor__author-input"
+          :placeholder="`未填寫預設為「${DEFAULT_REPLY_AUTHOR}」`"
+          :maxlength="LIMITS.replyAuthor"
+          @keydown="onKeydown($event, send)"
+        />
+      </label>
       <p v-if="error" class="field__error" role="alert">{{ error }}</p>
       <div class="editor__row">
         <span class="editor__hint">
@@ -260,6 +272,23 @@ function onKeydown(e: KeyboardEvent, action: () => void) {
       justify-content: flex-start;
       margin-left: -12px;
     }
+  }
+
+  &__author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__author-label {
+    flex-shrink: 0;
+    font-size: 14px;
+    color: var(--echo-muted);
+  }
+
+  &__author-input {
+    flex: 1;
+    min-width: 0;
   }
 
   &__hint {

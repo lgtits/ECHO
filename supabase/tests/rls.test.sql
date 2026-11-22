@@ -3,7 +3,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(36);
 
 -- ── 測試資料（以 postgres 建立，不受 RLS 限制）──────────────
 -- a1 = 管理者；b1、b2 = 匿名會友
@@ -142,8 +142,23 @@ select lives_ok(
 select results_eq(
   $$select r.author_name, p.reply_count from public.replies r join public.posts p on p.id = r.post_id
     where r.post_id = '00000000-0000-0000-0000-0000000000d1'$$,
-  $$values ('王牧師'::text, 1)$$,
-  '回覆記錄顯示名稱快照，回覆數加一'
+  $$values ('牧者'::text, 1)$$,
+  '沒填回應者名稱時顯示「牧者」，回覆數加一（spec D18）'
+);
+select lives_ok(
+  $$insert into public.replies (post_id, body, author_name)
+    values ('00000000-0000-0000-0000-0000000000d1', '補充說明', '  李傳道 ')$$,
+  '管理者可以填寫回應者名稱'
+);
+select is(
+  (select author_name from public.replies where body = '補充說明'), '李傳道',
+  '回應者名稱去頭尾空白後儲存（AC6.2）'
+);
+select throws_ok(
+  $$insert into public.replies (post_id, body, author_name)
+    values ('00000000-0000-0000-0000-0000000000d1', '太長', repeat('名', 21))$$,
+  '23514', null,
+  '回應者名稱超過 20 字會被拒絕'
 );
 update public.posts set is_hidden = true where id = '00000000-0000-0000-0000-0000000000d1';
 select results_eq(

@@ -18,6 +18,16 @@ const url = computed(() => buildSessionUrl(siteUrl(), props.session.code));
 const nowUrl = computed(() => buildNowUrl(siteUrl()));
 const projecting = ref(false);
 
+// q-dialog 的圖層比全螢幕投影高，先關掉對話框再投影；關閉投影後回到對話框
+function startProjecting() {
+  open.value = false;
+  projecting.value = true;
+}
+function stopProjecting() {
+  projecting.value = false;
+  open.value = true;
+}
+
 async function copy() {
   try {
     await copyToClipboard(url.value);
@@ -58,7 +68,7 @@ async function copy() {
       <p class="share__url">{{ url }}</p>
 
       <div class="share__actions">
-        <button type="button" class="btn btn--primary" @click="projecting = true">
+        <button type="button" class="btn btn--primary" @click="startProjecting">
           全螢幕投影
         </button>
         <button type="button" class="btn btn--secondary" @click="copy">複製連結</button>
@@ -102,7 +112,7 @@ async function copy() {
     :url="url"
     :code="session.code"
     :title="session.title"
-    @close="projecting = false"
+    @close="stopProjecting"
   />
 </template>
 

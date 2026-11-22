@@ -5,11 +5,12 @@
 import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { Post, Reply } from '@/types/models';
-import { LIMITS } from '@/types/models';
+import { DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
 import { useAuthStore } from '@/stores/auth';
 import { useBoardStore } from '@/stores/board';
 import { errorMessage } from '@/utils/errors';
 import { formatPostTime } from '@/utils/time';
+import { useReplyAuthor } from '@/composables/useReplyAuthor';
 import ComposeSheet from './ComposeSheet.vue';
 
 const props = defineProps<{ post: Post }>();
@@ -19,6 +20,7 @@ const emit = defineEmits<{ hide: [] }>();
 const $q = useQuasar();
 const auth = useAuthStore();
 const board = useBoardStore();
+const authorName = useReplyAuthor();
 
 // 每則留言各自的回覆草稿，不小心關掉也不會遺失
 const draftKey = computed(() => `echo.replyDraft.${props.post.id}`);
@@ -61,6 +63,10 @@ watch(
 const tooLong = computed(() => body.value.length > LIMITS.replyBody);
 const canSend = computed(() => !!body.value.trim() && !tooLong.value && !sending.value);
 const isMine = (r: Reply) => r.authorId === auth.viewer?.uid;
+// 編輯舊回覆時名稱不變（spec D18），只顯示
+const editingAuthor = computed(
+  () => props.post.replies.find((r) => r.id === editingId.value)?.authorName ?? '',
+);
 
 function startEdit(r: Reply) {
   editingId.value = r.id;
@@ -85,7 +91,7 @@ async function submit() {
       $q.notify({ message: '已儲存回覆' });
       stopEdit();
     } else {
-      await board.addReply(props.post.id, body.value);
+      await board.addReply(props.post.id, body.value, authorName.value);
       body.value = '';
       $q.notify({ message: '已送出回覆' });
       open.value = false;
@@ -167,7 +173,17 @@ function onHide() {
     </template>
 
     <template #footer>
-      <span class="ctx__as">以「{{ auth.displayName }}」回覆</span>
+      <span v-if="editingId" class="ctx__as">回應者：{{ editingAuthor }}</span>
+      <label v-else class="ctx__author">
+        <span class="ctx__author-label">回應者</span>
+        <input
+          v-model="authorName"
+          class="ctx__author-input"
+          :placeholder="`未填寫預設為「${DEFAULT_REPLY_AUTHOR}」`"
+          :maxlength="LIMITS.replyAuthor"
+          enterkeyhint="done"
+        />
+      </label>
       <span class="ctx__count" :class="{ 'ctx__count--over': tooLong }">
         {{ body.length }}/{{ LIMITS.replyBody }}
       </span>
@@ -239,6 +255,35 @@ function onHide() {
     color: var(--echo-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__author {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__author-label {
+    flex-shrink: 0;
+    font-size: 15px;
+    color: var(--echo-muted);
+  }
+
+  &__author-input {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 16px; // 小於 16px 時 iOS 會自動放大頁面
+
+    &:focus {
+      outline: none;
+    }
   }
 
   &__count {

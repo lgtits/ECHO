@@ -79,7 +79,8 @@ export interface PostsService {
 }
 
 export interface RepliesService {
-  create(postId: string, body: string): Promise<Reply>;
+  /** authorName 留空時由 DB 填「牧者」（spec D18） */
+  create(postId: string, body: string, authorName: string): Promise<Reply>;
   update(replyId: string, body: string): Promise<Reply>;
   remove(replyId: string): Promise<void>;
 }

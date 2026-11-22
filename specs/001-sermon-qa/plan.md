@@ -91,7 +91,7 @@ create table replies (
   post_id     uuid not null references posts on delete cascade,
   session_id  uuid not null references sessions on delete cascade, -- 冗餘欄位：供 Realtime 以 session 過濾
   author_id   uuid references staff_members(user_id) on delete set null,
-  author_name text not null,               -- 快照顯示名稱，會友無需讀 staff_members
+  author_name text not null,               -- 回應者名稱（前端填，預設「牧者」，1–20 字；spec D18）
   body        text not null check (char_length(body) between 1 and 2000),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
@@ -123,7 +123,7 @@ create table replies (
 | `posts_before_insert`     | BEFORE INSERT       | 強制 `author_id = auth.uid()`；檢查 `session_is_writable()`；頻率限制（同一人 60 秒內 ≥ 5 則則拒絕，AC2.3） |
 | `posts_before_update`     | BEFORE UPDATE       | 只允許變更 `is_hidden`；自動填 `hidden_by / hidden_at`                                                      |
 | `upvotes_after_change`    | AFTER INSERT/DELETE | 更新 `posts.upvote_count`                                                                                   |
-| `replies_before_insert`   | BEFORE INSERT       | 填 `author_id`、`author_name`、`session_id`                                                                 |
+| `replies_before_insert`   | BEFORE INSERT       | 填 `author_id`、`session_id`；`author_name` 去頭尾空白，空白時填「牧者」（spec D18）                         |
 | `replies_after_change`    | AFTER INSERT/DELETE | 更新 `posts.reply_count`                                                                                    |
 | `posts_broadcast_removed` | AFTER UPDATE/DELETE | 留言被隱藏或刪除時，以 `realtime.send` 廣播 `{post_id}` 到 `session:<id>`（見 §5）                          |
 | `touch_updated_at`        | BEFORE UPDATE       | sessions / replies 的 `updated_at`                                                                          |
