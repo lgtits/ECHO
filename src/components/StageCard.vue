@@ -1,14 +1,12 @@
 <script setup lang="ts">
-// 講台小卡（ux.md A7）：白色小卡、編號、細分隔線、頁尾資訊；一律不顯示暱稱（D2）。
+// 講台小卡（ux.md A7）：白色小卡、編號、細分隔線；頁尾左邊是留言者暱稱（未填顯示匿名，D2）、右邊是附議數。
+// 場次名稱放在卡片外的左上方（StageView）。
 import { computed } from 'vue';
 import type { Post } from '@/types/models';
-import { isAnswered } from '@/utils/sortFilter';
 
 const props = defineProps<{
   post: Post | null;
   index: number;
-  sessionTitle: string;
-  sessionDate: string;
 }>();
 
 const no = computed(() => `Q.${String(props.index + 1).padStart(2, '0')}`);
@@ -28,16 +26,16 @@ const size = computed(() => {
   >
     <div class="card__head">
       <span>{{ post ? no : '' }}</span>
-      <span>會友留言</span>
     </div>
     <div class="card__body" aria-live="polite">
       <template v-if="post">{{ post.body }}</template>
       <span v-else class="card__empty">目前沒有留言</span>
     </div>
-    <div class="card__foot">
-      <span v-if="post && isAnswered(post)" class="card__answered">已回應</span>
-      <span v-else>{{ sessionTitle }} · {{ sessionDate }}</span>
-      <span v-if="post" class="card__votes">↑ {{ post.upvoteCount }} 人也想知道</span>
+    <div v-if="post" class="card__foot">
+      <span class="card__who">{{ post.nickname || '匿名' }}</span>
+      <span class="card__votes" :aria-label="`附議 ${post.upvoteCount}`"
+        >↑ {{ post.upvoteCount }}</span
+      >
     </div>
   </div>
 </template>
@@ -57,7 +55,7 @@ const size = computed(() => {
 
   &__head {
     display: flex;
-    justify-content: space-between;
+    min-height: 1.4em; // 沒有留言時編號是空的，高度不變
     font-size: 13px;
     letter-spacing: 1px;
     color: var(--echo-muted);
@@ -99,9 +97,9 @@ const size = computed(() => {
     color: var(--echo-muted);
   }
 
-  &__answered {
-    color: var(--echo-success);
-    font-weight: 600;
+  &__who {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   &__votes {

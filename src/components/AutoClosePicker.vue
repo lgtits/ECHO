@@ -85,17 +85,17 @@ defineExpose({ isPast });
 
 <template>
   <div class="field">
-    <span :id="id('label')" class="field__label">自動結束時間</span>
+    <span :id="id('label')" class="field__label">設定留言結束時間</span>
     <div class="ac" role="group" :aria-labelledby="id('label')">
       <input
         :id="id('date')"
         v-model="date"
         class="input ac__date"
         type="date"
-        aria-label="自動結束日期"
+        aria-label="留言結束日期"
         :disabled="!time"
       />
-      <select :id="id('time')" v-model="time" class="input ac__time" aria-label="自動結束時間">
+      <select :id="id('time')" v-model="time" class="input ac__time" aria-label="留言結束時間">
         <option value="">不自動結束</option>
         <option v-for="t in timeOptions" :key="t" :value="t">{{ t }}</option>
       </select>

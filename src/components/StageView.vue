@@ -115,12 +115,11 @@ const isPhonePortrait = computed(() => $q.screen.width < 600 && $q.screen.width 
 
     <div class="stage__center">
       <div class="stage__card">
-        <StageCard
-          :post="post"
-          :index="index"
-          :session-title="sessionTitle"
-          :session-date="sessionDate"
-        />
+        <!-- 場次名稱在卡片外左上方（ux.md A7） -->
+        <p class="stage__session">
+          {{ sessionTitle }}<span class="stage__date"> · {{ sessionDate }}</span>
+        </p>
+        <StageCard :post="post" :index="index" />
       </div>
       <p v-if="isPhonePortrait" class="stage__tip">橫放手機可以看得更大</p>
     </div>
@@ -202,6 +201,20 @@ const isPhonePortrait = computed(() => $q.screen.width < 600 && $q.screen.width 
     width: 100%;
   }
 
+  &__session {
+    margin: 0 0 10px 4px;
+    font-size: 16px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__date {
+    font-weight: 400;
+    color: var(--echo-muted);
+  }
+
   &__tip {
     margin: 0;
     font-size: 14px;
@@ -243,7 +256,7 @@ const isPhonePortrait = computed(() => $q.screen.width < 600 && $q.screen.width 
 
     &__card {
       // 16:10，高度也不能超出畫面
-      width: min(960px, 100%, (100vh - 200px) * 1.6);
+      width: min(960px, 100%, (100vh - 236px) * 1.6);
     }
 
     &__esc {
@@ -254,7 +267,12 @@ const isPhonePortrait = computed(() => $q.screen.width < 600 && $q.screen.width 
 
 @media (max-width: 599px) and (orientation: landscape) {
   .stage__card {
-    width: min(100%, (100vh - 120px) * 1.6);
+    width: min(100%, (100vh - 150px) * 1.6);
+  }
+
+  .stage__session {
+    margin-bottom: 4px;
+    font-size: 14px;
   }
 
   .stage__center {

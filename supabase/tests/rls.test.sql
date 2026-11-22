@@ -3,7 +3,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(38);
 
 -- ── 測試資料（以 postgres 建立，不受 RLS 限制）──────────────
 -- a1 = 管理者；b1、b2 = 匿名會友
@@ -85,9 +85,9 @@ select throws_ok(
   $$update public.posts set body = '改內容' where id = '00000000-0000-0000-0000-0000000000d1'$$,
   '42501', null, '會友不能改留言內容'
 );
-select lives_ok(
+select throws_ok(
   'delete from public.posts',
-  '會友執行刪除不會報錯，但 RLS 不讓他刪到任何一則（spec D9；最後一段檢查筆數）'
+  '42501', null, '會友不能刪除留言（spec D9；前端角色已沒有 DELETE 權限，D20）'
 );
 select throws_ok(
   $$insert into public.sessions (title, sermon_date) values ('偷建場次', '2026-12-01')$$,
@@ -166,13 +166,17 @@ select results_eq(
   $$values (true, '王牧師'::text)$$,
   '管理者可以隱藏留言，並記錄是誰隱藏（AC7.2）'
 );
-select lives_ok(
+select throws_ok(
   $$delete from public.posts where body = '連續 1'$$,
-  '管理者可以刪除留言（spec D15）'
+  '42501', null, '管理者也不能直接刪除，一律改為封存（spec D20）'
+);
+select lives_ok(
+  $$select public.archive_post((select id from public.posts where body = '連續 1'))$$,
+  '管理者可以刪除（封存）留言（spec D15、D20）'
 );
 select is(
   (select count(*)::int from public.posts where body = '連續 1'), 0,
-  '刪除後就讀不到這則留言'
+  '封存後就讀不到這則留言'
 );
 
 -- ── 會友 b2 看隱藏後的留言 ───────────────────────────────
@@ -195,8 +199,13 @@ select throws_ok(
 reset role;
 
 select is(
-  (select count(*)::int from public.posts where session_id = '00000000-0000-0000-0000-0000000000c1'), 4,
-  '會友刪不掉留言，管理者刪掉一則：5 則剩 4 則'
+  (select count(*)::int from public.posts where session_id = '00000000-0000-0000-0000-0000000000c1'), 5,
+  '會友刪不掉留言；管理者刪除只是封存，5 則資料都還在（spec D20）'
+);
+select is(
+  (select count(*)::int from public.posts
+    where session_id = '00000000-0000-0000-0000-0000000000c1' and deleted_at is not null), 1,
+  '其中 1 則標記為封存'
 );
 select is(
   (select author_id from public.posts where id = '00000000-0000-0000-0000-0000000000d1'),

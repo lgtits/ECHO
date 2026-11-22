@@ -267,8 +267,9 @@ export function createSupabaseServices(url: string, key: string): Services {
       // 重新開放時由 DB trigger 清除自動結束時間（AC5.9）
       setStatus: (id, status) => updateSession(id, { status }),
       setAutoClose: (id, autoCloseAt) => updateSession(id, { auto_close_at: autoCloseAt }),
+      // 刪除＝封存（spec D20）：只填 deleted_at，資料保留
       async remove(id) {
-        check(await db.from('sessions').delete().eq('id', id));
+        check(await db.rpc('archive_session', { p_id: id }));
       },
       async recentSpeakers() {
         const rows = check(
@@ -317,9 +318,9 @@ export function createSupabaseServices(url: string, key: string): Services {
         check(await db.from('posts').update({ is_hidden: hidden }).eq('id', postId));
         return requirePost(postId);
       },
-      // 附議與回覆由 DB 外鍵一起刪除；trigger 廣播 post_removed 給所有開著的畫面
+      // 刪除＝封存（spec D20）；trigger 廣播 post_removed 給所有開著的畫面
       async remove(postId) {
-        check(await db.from('posts').delete().eq('id', postId));
+        check(await db.rpc('archive_post', { p_id: postId }));
         known.delete(postId);
       },
     },
@@ -352,8 +353,9 @@ export function createSupabaseServices(url: string, key: string): Services {
         );
         return toReply(row);
       },
+      // 刪除＝封存（spec D20）；posts.reply_count 的 UPDATE 會讓開著的畫面重新讀取
       async remove(replyId) {
-        check(await db.from('replies').delete().eq('id', replyId));
+        check(await db.rpc('archive_reply', { p_id: replyId }));
       },
     },
 
@@ -463,6 +465,8 @@ export function createSupabaseServices(url: string, key: string): Services {
               if (row && 'post_id' in row && row.post_id) refresh(row.post_id);
             },
           )
+          // 場次被刪除（封存）：RLS 讓所有人都讀不到，改由 DB 廣播（spec D20）
+          .on('broadcast', { event: 'session_removed' }, () => handlers.onSessionChange(null))
           .on('broadcast', { event: 'post_removed' }, ({ payload }) => {
             const id = (payload as { post_id?: string } | undefined)?.post_id;
             if (!id) return;

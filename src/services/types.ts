@@ -63,6 +63,7 @@ export interface SessionsService {
   /** 重新開放時清除自動結束時間（AC5.9） */
   setStatus(id: string, status: SessionStatus): Promise<Session>;
   setAutoClose(id: string, autoCloseAt: string | null): Promise<Session>;
+  /** 刪除＝封存：資料保留，App 內所有人都看不到（spec D20） */
   remove(id: string): Promise<void>;
   /** 過去用過的講員，最近的在前（A3 預設值與提示） */
   recentSpeakers(): Promise<string[]>;
@@ -74,7 +75,7 @@ export interface PostsService {
   create(sessionId: string, input: PostInput): Promise<Post>;
   setUpvote(postId: string, on: boolean): Promise<Post>;
   setHidden(postId: string, hidden: boolean): Promise<Post>;
-  /** 管理者永久刪除留言（連同附議與回覆，spec D15） */
+  /** 管理者刪除留言＝封存（spec D15、D20） */
   remove(postId: string): Promise<void>;
 }
 
@@ -82,6 +83,7 @@ export interface RepliesService {
   /** authorName 留空時由 DB 填「牧者」（spec D18） */
   create(postId: string, body: string, authorName: string): Promise<Reply>;
   update(replyId: string, body: string): Promise<Reply>;
+  /** 刪除＝封存（spec D20） */
   remove(replyId: string): Promise<void>;
 }
 

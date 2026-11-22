@@ -124,8 +124,9 @@ create table replies (
 | `posts_before_update`     | BEFORE UPDATE       | 只允許變更 `is_hidden`；自動填 `hidden_by / hidden_at`                                                      |
 | `upvotes_after_change`    | AFTER INSERT/DELETE | 更新 `posts.upvote_count`                                                                                   |
 | `replies_before_insert`   | BEFORE INSERT       | 填 `author_id`、`session_id`；`author_name` 去頭尾空白，空白時填「牧者」（spec D18）                         |
-| `replies_after_change`    | AFTER INSERT/DELETE | 更新 `posts.reply_count`                                                                                    |
-| `posts_broadcast_removed` | AFTER UPDATE/DELETE | 留言被隱藏或刪除時，以 `realtime.send` 廣播 `{post_id}` 到 `session:<id>`（見 §5）                          |
+| `replies_after_change`    | AFTER INSERT/DELETE/UPDATE OF deleted_at | 更新 `posts.reply_count`（封存減一、還原加一，spec D20）                                  |
+| `posts_broadcast_removed` | AFTER UPDATE/DELETE | 留言被隱藏或封存（刪除）時，以 `realtime.send` 廣播 `{post_id}` 到 `session:<id>`（見 §5）                  |
+| `sessions_broadcast_removed` | AFTER UPDATE OF deleted_at | 場次被封存（刪除）時廣播 `session_removed` 到 `session:<id>`，開著的畫面顯示「找不到此場次」（spec D20） |
 | `touch_updated_at`        | BEFORE UPDATE       | sessions / replies 的 `updated_at`                                                                          |
 | `sessions_before_update`  | BEFORE UPDATE       | 狀態從 `closed` 改回 `open` 時清除 `auto_close_at`                                                          |
 
@@ -157,16 +158,18 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 
 | 資料表        | 動作                     | 會友                                              | 管理者                                       |
 | ------------- | ------------------------ | ------------------------------------------------- | -------------------------------------------- |
-| sessions      | SELECT                   | `status in (open, closed)`                        | 全部                                         |
-|               | INSERT / UPDATE / DELETE | ✗                                                 | ✓                                            |
-| posts         | SELECT                   | 未隱藏，且所屬場次非草稿（不含 `author_id`）      | 全部（不含 `author_id`）                     |
+| sessions      | SELECT                   | `status in (open, closed)`，且未封存              | 未封存的全部                                 |
+|               | INSERT / UPDATE          | ✗                                                 | ✓（封存的不能改）                            |
+|               | 刪除（`archive_session`） | ✗                                                 | ✓ 封存（spec D20）；沒有 DELETE 權限         |
+| posts         | SELECT                   | 未隱藏、未封存，且所屬場次非草稿、未封存（不含 `author_id`） | 未封存，且所屬場次未封存（不含 `author_id`） |
 |               | INSERT                   | 場次可寫入（`session_is_writable`，trigger 檢查） | ✓                                            |
 |               | UPDATE (`is_hidden`)     | ✗                                                 | ✓                                            |
-|               | DELETE                   | ✗（spec D9）                                      | ✓（spec D15；附議、回覆 `on delete cascade`） |
+|               | 刪除（`archive_post`）   | ✗（spec D9）                                      | ✓ 封存（spec D15、D20）；沒有 DELETE 權限    |
 | upvotes       | SELECT                   | 只看自己的（判斷已附議）                          | 只看自己的                                   |
 |               | INSERT / DELETE          | 自己的，且留言可見、場次可寫入                    | 同左                                         |
-| replies       | SELECT                   | 所屬留言可見時                                    | 全部                                         |
-|               | INSERT / UPDATE / DELETE | ✗                                                 | ✓                                            |
+| replies       | SELECT                   | 未封存，且所屬留言可見時                          | 未封存，且所屬留言可見時                     |
+|               | INSERT / UPDATE          | ✗                                                 | ✓（封存的不能改）                            |
+|               | 刪除（`archive_reply`）  | ✗                                                 | ✓ 封存（spec D20）；沒有 DELETE 權限         |
 | staff_members | SELECT                   | ✗                                                 | 全部                                         |
 
 > 2026-11-04 起只有一種管理身分（spec D12），不再區分牧者、同工，也不需要 `is_pastor()`。
@@ -345,7 +348,7 @@ DB 產生場次碼 ──▶ 前端組網址 ──▶ qrcode 套件在瀏覽器
 | FR-001 | boot/supabase.ts 匿名登入                            | 手動 + e2e 手動腳本 |
 | FR-002 | sessions RLS、BoardPage                              | pgTAP、手動         |
 | FR-003 | posts trigger + 欄位權限、PostComposer               | pgTAP               |
-| FR-004 | （已取消）posts DELETE policy 對會友、管理者一律拒絕 | pgTAP               |
+| FR-004 | （已取消）前端角色沒有 posts DELETE 權限（spec D20） | pgTAP               |
 | FR-005 | upvotes PK + policy + trigger                        | pgTAP               |
 | FR-006 | utils/sortFilter.ts                                  | Vitest              |
 | FR-007 | services/supabase/realtime.ts（mock 版先驗畫面行為） | 手動（雙瀏覽器）    |

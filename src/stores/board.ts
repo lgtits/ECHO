@@ -267,7 +267,7 @@ export const useBoardStore = defineStore('board', () => {
     posts.value[id] = p;
   }
 
-  /** 永久刪除（spec D15）；不做樂觀更新，成功才從畫面移除 */
+  /** 刪除＝封存（spec D15、D20）；不做樂觀更新，成功才從畫面移除 */
   async function deletePost(id: string) {
     await services.posts.remove(id);
     removeLocal(id);

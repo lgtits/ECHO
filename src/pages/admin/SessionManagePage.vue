@@ -144,10 +144,10 @@ function removeSession() {
   const title = s.value.title;
   $q.dialog({
     title: '刪除場次',
-    message: `場次與所有留言、回覆都會永久刪除，無法復原。請輸入場次標題「${title}」確認。`,
+    message: `刪除後，會友與管理端都看不到這個場次和它的留言、回覆。資料仍會保留，需要時可請系統管理者還原。請輸入場次標題「${title}」確認。`,
     prompt: { model: '', type: 'text', isValid: (v: string) => v.trim() === title },
     cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
-    ok: { label: '永久刪除', flat: true, noCaps: true, color: 'negative' },
+    ok: { label: '刪除', flat: true, noCaps: true, color: 'negative' },
   }).onOk(() => void doRemove());
 }
 
@@ -202,11 +202,12 @@ async function hide(postId: string, hidden: boolean) {
   }
 }
 
-/** 永久刪除無法復原，一定先確認（AC7.4；spec D15） */
+/** 刪除＝封存（spec D15、D20），仍一定先確認（AC7.4） */
 function confirmDelete(postId: string) {
   $q.dialog({
-    title: '永久刪除這則留言？',
-    message: '留言、附議與回覆都會一起刪除，無法復原。只是不想讓會友看到的話，可以改用「隱藏」。',
+    title: '刪除這則留言？',
+    message:
+      '刪除後，會友與管理端都看不到這則留言和它的回覆；資料仍會保留，需要時可請系統管理者還原。只是不想讓會友看到的話，可以改用「隱藏」。',
     cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
     ok: { label: '刪除', flat: true, noCaps: true, color: 'negative' },
   }).onOk(() => {
@@ -227,7 +228,7 @@ function confirmDelete(postId: string) {
 function confirmDeleteReply(postId: string, replyId: string) {
   $q.dialog({
     title: '刪除這則回覆？',
-    message: '刪除後會友就看不到這則回覆了，無法復原。',
+    message: '刪除後會友就看不到這則回覆了。',
     cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
     ok: { label: '刪除', flat: true, noCaps: true, color: 'negative' },
   }).onOk(() => {

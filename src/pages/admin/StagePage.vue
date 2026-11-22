@@ -61,7 +61,7 @@ onBeforeUnmount(() => board.endStage());
       @close="close"
       @reply="replyOpen = true"
     />
-    <!-- 文字回覆（與會友撰寫留言相同的面板）：送出後回到小卡，頁尾出現「已回應」 -->
+    <!-- 文字回覆（與會友撰寫留言相同的面板）：送出後回到小卡 -->
     <ReplySheet v-if="replyPost" v-model="replyOpen" :post="replyPost" />
   </template>
 </template>

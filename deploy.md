@@ -60,6 +60,7 @@ ECHO 由兩部分組成：
 | `20261116000000_init.sql`                 | 資料表、權限、即時同步、自動結束   | ✅ 完成 |
 | `20261116010000_staff_delete_posts.sql`   | 管理者可以刪除會友留言（spec D15） |         |
 | `20261122000000_reply_author_name.sql`    | 回覆可填回應者名稱，預設「牧者」（spec D18） |         |
+| `20261122010000_soft_delete.sql`          | 刪除改為封存，資料保留（spec D20；必須在 `staff_delete_posts` 之後執行） |         |
 
 之後新增的 migration 也照這個方式執行，並在上表記錄。
 
@@ -240,6 +241,11 @@ nslookup -type=TXT _github-pages-challenge-lgtits.echo.tnlhc.org 8.8.8.8
 - **免費專案閒置一週會暫停**：每週主日都會使用通常不會觸發。若暫停，到 Supabase 後台按 **Restore** 即可（tasks T108 的每日自動 ping 尚未做）
 - **沒有自動備份**：免費方案不備份資料庫（spec §7.1 P-01）。需要保存時，到 Supabase → Table Editor 把 `sessions`、`posts`、`replies` 各自 Export to CSV（後台不提供匯出，spec D16）
 - **換管理密碼**：見 §1.4，換完口頭告知同工
+- **還原被刪除的資料**（spec D20）：管理端的「刪除」只是封存，資料都還在。到 Supabase → Table Editor：
+  1. 打開 `sessions`、`posts` 或 `replies`，用 Filter 篩選 `deleted_at` **is not null**，找到要還原的那一列（可依 `deleted_at` 時間、標題或內容判斷）。
+  2. 把 `deleted_at` 和 `deleted_by` 都改成 `NULL`，存檔。畫面重新整理後就會出現；還原回覆時回覆數會自動加回去。
+  3. 還原留言或回覆時，所屬的場次（以及留言）也要是未封存的才看得到。
+  - 真的要永久刪除：在 Table Editor 直接刪掉那一列（刪場次會連同它的留言、附議、回覆一起刪除）。
 
 ---
 
