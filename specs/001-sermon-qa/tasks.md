@@ -121,6 +121,7 @@
 - [x] **T134** 講台小卡：拿掉右上角「會友留言」與頁尾「已回應」，頁尾左邊改為留言者暱稱（未填顯示匿名）；場次名稱移到卡片外左上方（spec D2、ux.md A7，2026-11-22）
 - [x] **T135** `AutoClosePicker` 欄位名稱「自動結束時間」改為「設定留言結束時間」（場次表單、「設定結束時間」對話框；ux.md A3，2026-11-22）
 - [~] **T136** 刪除改為封存：migration `20261122010000_soft_delete.sql`（`deleted_at`／`deleted_by`、`archive_session`／`archive_post`／`archive_reply` RPC、RLS 排除封存、拿掉 DELETE 權限、回覆數與 Realtime 廣播）+ pgTAP `soft_delete.test.sql`、`rls.test.sql` 調整；services 改呼叫 RPC；確認訊息改為「資料會保留」；deploy.md 還原步驟（spec D20，2026-11-22）。待在 Supabase 執行 migration `👤`
+- [x] **T137** 分享預覽：`og-image.jpg`（1200×630，由 logo_2.jpg 產生，`twitter:card` 改 summary_large_image）；`<title>`、`og:title`、`og:site_name` 改為「世界之光聖教會 | ECHO」；加 `og:url`、canonical、`og:locale`、`og:image:alt`、`<noscript>` H1（ux.md U1，2026-11-22）
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 
