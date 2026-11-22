@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // 會友端頁首（ux.md §1.3）：白底、固定在頂端。
-// 左邊 ECHO（有 back 時前面加 ‹，點了回首頁）；右邊放頁面動作。
-// condensed 時把 ECHO 換成 title（留言板往下捲、看不到場次標題時）。
+// 左邊「世界之光聖教會 | ECHO」（有 back 時前面加 ‹，點了回首頁）；右邊放頁面動作。
+// 字型、字級、字距與報名系統（tnlhc-signup）的頁首相同（ux.md U1）。
+// condensed 時把教會名稱換成 title（留言板往下捲、看不到場次標題時）。
 withDefaults(
   defineProps<{
     /** 顯示 ‹ 並連到這個路徑 */
@@ -21,10 +22,12 @@ withDefaults(
         :to="back ?? '/'"
         class="mh__home"
         :class="{ 'mh__home--back': back }"
-        :aria-label="back ? '回場次列表' : 'ECHO 首頁'"
+        :aria-label="back ? '回場次列表' : '世界之光聖教會 ECHO 首頁'"
       >
         <span v-if="back" class="mh__chev" aria-hidden="true">‹</span>
-        <span class="mh__brand" :class="{ 'mh__brand--out': condensed && title }">ECHO</span>
+        <span class="mh__brand" :class="{ 'mh__brand--out': condensed && title }"
+          >世界之光聖教會<span class="mh__product">ECHO</span></span
+        >
       </router-link>
 
       <span class="mh__title" :class="{ 'mh__title--in': condensed && title }" aria-hidden="true">
@@ -74,15 +77,27 @@ withDefaults(
     margin-top: -3px;
   }
 
+  // 與 tnlhc-signup 的 .main-toolbar__title 相同
   &__brand {
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--echo-font-brand);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     transition: opacity 0.15s ease;
 
     &--out {
       opacity: 0;
     }
+  }
+
+  // 系統名稱，以細直線與教會名稱分開
+  &__product {
+    padding-left: 12px;
+    border-left: 1px solid var(--echo-border);
+    line-height: 1.1;
   }
 
   // 標題疊在 ECHO 的位置，捲動後淡入

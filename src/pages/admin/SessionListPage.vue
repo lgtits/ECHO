@@ -160,6 +160,7 @@ const statusText = (s: SessionSummary) =>
 
 // 場次列表放在白色圓角面板裡（Matcha）
 .rows {
+  margin-top: 12px; // 與上方篩選列的分隔線留空隙（同留言列表，ux.md §7）
   overflow: hidden;
   border: 1px solid var(--echo-line);
   border-radius: var(--echo-radius-lg);

@@ -40,15 +40,16 @@
     />
     <link rel="icon" type="image/ico" href="<%= publicPath %>favicon.ico" />
 
-    <!-- 分享連結時的預覽（LINE、Facebook 等）：og-image.png 由 logo.png 放在深抹茶底上產生 -->
+    <!-- 分享連結時的預覽（LINE、Facebook 等）：logo_2.jpg 是正方形，用 summary（小縮圖）避免被裁成橫幅 -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="<%= productName %>" />
     <meta property="og:title" content="<%= productName %>" />
     <meta property="og:description" content="<%= productDescription %>" />
-    <meta property="og:image" content="<%= siteUrl ? siteUrl + '/' : publicPath %>og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:image" content="<%= siteUrl ? siteUrl + '/' : publicPath %>logo_2.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="592" />
+    <meta property="og:image:height" content="592" />
+    <meta name="twitter:card" content="summary" />
     <link
       rel="apple-touch-icon"
       sizes="180x180"

@@ -6,6 +6,7 @@ import { useBreakpoint } from '@/composables/useBreakpoint';
 import { useSessionsStore } from '@/stores/sessions';
 import AccountMenu from '@/components/AccountMenu.vue';
 import SessionSidebar from '@/components/SessionSidebar.vue';
+import AdminBrand from '@/components/AdminBrand.vue';
 
 const route = useRoute();
 const sessions = useSessionsStore();
@@ -32,7 +33,7 @@ watch(
       <SessionSidebar v-if="isWide" />
       <div class="admin__main">
         <header v-if="!isWide" class="admin__bar">
-          <router-link to="/admin" class="admin__brand">ECHO <span>管理</span></router-link>
+          <router-link to="/admin" class="admin__brand"><AdminBrand /></router-link>
           <router-link
             v-if="route.path === '/admin'"
             to="/admin/sessions/new"
@@ -92,14 +93,8 @@ watch(
   }
 
   &__brand {
-    font-size: 16px;
-    font-weight: 600;
     text-decoration: none;
     margin-right: auto;
-
-    span {
-      color: var(--echo-muted);
-    }
   }
 
   &__new {

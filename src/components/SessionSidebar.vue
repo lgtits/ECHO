@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router';
 import { useSessionsStore } from '@/stores/sessions';
 import { formatShortDate } from '@/utils/time';
 import AccountMenu from './AccountMenu.vue';
+import AdminBrand from './AdminBrand.vue';
 
 const route = useRoute();
 const sessions = useSessionsStore();
@@ -19,7 +20,7 @@ const groups = computed(() => [
 <template>
   <aside class="sidebar" aria-label="場次">
     <div class="sidebar__head">
-      <router-link to="/admin" class="sidebar__brand">ECHO <span>管理</span></router-link>
+      <router-link to="/admin" class="sidebar__brand"><AdminBrand /></router-link>
       <router-link to="/admin/sessions/new" class="btn btn--secondary sidebar__new"
         >＋ 新增</router-link
       >
@@ -74,13 +75,7 @@ const groups = computed(() => [
   }
 
   &__brand {
-    font-size: 16px;
-    font-weight: 600;
     text-decoration: none;
-
-    span {
-      color: var(--echo-muted);
-    }
   }
 
   &__new {

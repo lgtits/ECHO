@@ -270,7 +270,12 @@ function showNew() {
     <header class="bar">
       <div class="bar__info">
         <template v-if="s">
-          <h1 class="bar__title">{{ s.title }}</h1>
+          <!-- 麵包屑：場次列表 › 場次標題（ux.md A4） -->
+          <nav class="crumb" aria-label="麵包屑">
+            <router-link to="/admin" class="crumb__link">場次列表</router-link>
+            <span class="crumb__sep" aria-hidden="true">›</span>
+            <h1 class="bar__title" aria-current="page">{{ s.title }}</h1>
+          </nav>
           <span class="bar__sub">
             {{ formatShortDate(s.sermonDate)
             }}<template v-if="s.speaker"> · {{ s.speaker }}</template> · 場次碼 {{ s.code }}
@@ -544,6 +549,30 @@ function showNew() {
   border-bottom: 1px solid var(--echo-line);
 }
 
+.crumb {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+
+  &__link {
+    flex-shrink: 0;
+    font-size: 15px;
+    color: var(--echo-muted);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--echo-text);
+      text-decoration: underline;
+    }
+  }
+
+  &__sep {
+    flex-shrink: 0;
+    color: var(--echo-faint);
+  }
+}
+
 .bar {
   display: flex;
   flex-wrap: wrap;
@@ -580,6 +609,7 @@ function showNew() {
   }
 
   &__title {
+    min-width: 0;
     margin: 0;
     font-size: 18px;
     font-weight: 600;

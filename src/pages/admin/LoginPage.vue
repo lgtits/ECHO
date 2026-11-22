@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { services } from '@/services';
 import { useAuthStore } from '@/stores/auth';
 import { errorMessage } from '@/utils/errors';
+import AdminBrand from '@/components/AdminBrand.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -45,7 +46,7 @@ onMounted(async () => {
   <div class="login">
     <div class="login__strip" aria-hidden="true" />
     <main class="login__box">
-      <h1 class="login__brand">ECHO <span>管理</span></h1>
+      <h1 class="login__brand"><AdminBrand size="lg" /></h1>
       <form class="login__form" @submit.prevent="submit">
         <div class="field">
           <label for="password" class="field__label">管理密碼</label>
@@ -94,12 +95,8 @@ onMounted(async () => {
 
   &__brand {
     margin: 0 0 28px;
-    font-size: 20px;
-    font-weight: 600;
-
-    span {
-      color: var(--echo-muted);
-    }
+    font-size: inherit;
+    font-weight: inherit;
   }
 
   &__form {
