@@ -81,25 +81,7 @@ const who = computed(() => props.post.nickname || '匿名');
       </div>
     </div>
 
-    <!-- 回覆 -->
-    <div v-for="r in post.replies" :key="r.id" class="reply">
-      <div class="reply__head">
-        <span>{{ r.authorName }}回覆 · {{ formatPostTime(r.createdAt, new Date(clock)) }}</span>
-        <!-- 管理模式：不必打開回覆面板就能刪除回覆（AC7.5） -->
-        <button
-          v-if="mode === 'admin'"
-          type="button"
-          class="btn btn--text btn--danger reply__delete"
-          :aria-label="`刪除${r.authorName}的回覆`"
-          @click="emit('deleteReply', r.id)"
-        >
-          刪除
-        </button>
-      </div>
-      <ClampText class="reply__body" :text="r.body" :lines="3" />
-    </div>
-
-    <!-- 會友模式：底部操作 -->
+    <!-- 會友模式：附議緊接在留言內容下方、回覆之前，才看得出是附議這則留言（ux.md §5） -->
     <div v-if="mode === 'member'" class="post__footer">
       <button
         type="button"
@@ -116,6 +98,24 @@ const who = computed(() => props.post.nickname || '匿名');
       >
         ↑ {{ post.upvoteCount }}
       </button>
+    </div>
+
+    <!-- 回覆 -->
+    <div v-for="r in post.replies" :key="r.id" class="reply">
+      <div class="reply__head">
+        <span>{{ r.authorName }}回覆 · {{ formatPostTime(r.createdAt, new Date(clock)) }}</span>
+        <!-- 管理模式：不必打開回覆面板就能刪除回覆（AC7.5） -->
+        <button
+          v-if="mode === 'admin'"
+          type="button"
+          class="btn btn--text btn--danger reply__delete"
+          :aria-label="`刪除${r.authorName}的回覆`"
+          @click="emit('deleteReply', r.id)"
+        >
+          刪除
+        </button>
+      </div>
+      <ClampText class="reply__body" :text="r.body" :lines="3" />
     </div>
   </article>
 </template>
