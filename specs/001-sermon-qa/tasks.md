@@ -123,6 +123,13 @@
 - [~] **T136** 刪除改為封存：migration `20261122010000_soft_delete.sql`（`deleted_at`／`deleted_by`、`archive_session`／`archive_post`／`archive_reply` RPC、RLS 排除封存、拿掉 DELETE 權限、回覆數與 Realtime 廣播）+ pgTAP `soft_delete.test.sql`、`rls.test.sql` 調整；services 改呼叫 RPC；確認訊息改為「資料會保留」；deploy.md 還原步驟（spec D20，2026-11-22）。待在 Supabase 執行 migration `👤`
 - [x] **T137** 分享預覽：`og-image.jpg`（1200×630，由 logo_2.jpg 產生，`twitter:card` 改 summary_large_image）；`<title>`、`og:title`、`og:site_name` 改為「世界之光聖教會 | ECHO」；加 `og:url`、canonical、`og:locale`、`og:image:alt`、`<noscript>` H1（ux.md U1，2026-11-22）
 - [x] **T138** 會友端 `PostCard` 附議按鈕移到留言內容正下方、回覆區塊之前，避免看起來像在附議牧者回應（ux.md §5，2026-11-22）
+- [x] **T139** 拿掉管理端的草稿畫面：場次列表「草稿」篩選、側欄「草稿」分組、場次頁草稿提醒列、分享 QR 對話框的草稿提醒與「立即開放」；資料庫不動（spec D17、ux.md A2／A3，2026-11-22）
+- [x] **T140** 場次列表拿掉 `max-width: 960px`，電腦版填滿側欄右邊的寬度（ux.md A2，2026-11-22）
+- [x] **T141** 電腦版（≥ 1280px）頁首改為與手機相同、整頁寬：品牌＋帳號選單（管理者名稱 ▾ → 登出）；側欄移到頁首下方，頂端為滿寬主要按鈕「＋ 新增場次」（與手機同色），下面是場次清單；`--admin-top` 各尺寸皆 59px（ux.md §2.1，2026-11-22）
+- [x] **T142** 新增／編輯場次表單：平板、電腦由右側滑出面板改為置中對話框（寬 520px，太高時內容捲動）；手機維持全螢幕（ux.md A3，2026-11-22）
+- [x] **T143** 場次管理頁麵包屑改為標題上方一行小字「‹ 場次列表」；電腦版標題列高度改用 `--bar-h: 80px`（回覆面板位置跟著算）（ux.md A4，2026-11-22）
+- [x] **T144** 回應者名稱改存 `localStorage`（原 `sessionStorage`），同一台裝置關掉瀏覽器後下次仍自動帶入上次填的名稱（spec AC6.2、ux.md A5，2026-11-22）
+- [x] **T145** 場次表單「講員／主講人」改為必填、預設空白（不再帶入上一場的講員，仍保留過去講員的輸入提示）；未填顯示「請輸入講員／主講人」（spec AC5.2、ux.md A3，2026-11-22）
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 

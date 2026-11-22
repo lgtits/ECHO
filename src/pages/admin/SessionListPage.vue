@@ -7,11 +7,11 @@ import { formatAutoClose, formatShortDate } from '@/utils/time';
 
 const sessions = useSessionsStore();
 
-type Filter = 'all' | SessionStatus;
+// 「草稿」篩選已拿掉（建立草稿已關閉，spec D17）；舊的草稿場次仍會出現在「全部」
+type Filter = 'all' | Exclude<SessionStatus, 'draft'>;
 const FILTERS: Array<{ value: Filter; label: string }> = [
   { value: 'all', label: '全部' },
   { value: 'open', label: '開放中' },
-  { value: 'draft', label: '草稿' },
   { value: 'closed', label: '已結束' },
 ];
 const STATUS_LABEL: Record<SessionStatus, string> = {
@@ -104,8 +104,8 @@ const statusText = (s: SessionSummary) =>
 
 <style scoped lang="scss">
 .list-page {
+  // 不限寬度，跟場次管理頁一樣填滿側欄右邊（ux.md A2，2026-11-22）
   &__inner {
-    max-width: 960px;
     padding: 16px 20px 40px;
   }
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// 管理端版型（ux.md §1.3、§2.1）：頂端 3px 深抹茶細條＋「ECHO 管理」；≥ 1280px 改為左側欄。
+// 管理端版型（ux.md §1.3、§2.1）：頂端 3px 深抹茶細條＋整頁寬的頁首（品牌、新增場次、帳號選單）；
+// ≥ 1280px 在頁首下方多一條左側欄。
 import { onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useBreakpoint } from '@/composables/useBreakpoint';
@@ -29,20 +30,21 @@ watch(
 <template>
   <div class="admin">
     <div class="admin__strip" aria-hidden="true" />
+    <!-- 頁首各尺寸都一樣、整頁寬；電腦版「新增場次」放在左側欄頂端 -->
+    <header class="admin__bar">
+      <router-link to="/admin" class="admin__brand"><AdminBrand /></router-link>
+      <router-link
+        v-if="!isWide && route.path === '/admin'"
+        to="/admin/sessions/new"
+        class="btn btn--primary admin__new"
+      >
+        ＋ 新增場次
+      </router-link>
+      <AccountMenu />
+    </header>
     <div class="admin__body">
       <SessionSidebar v-if="isWide" />
       <div class="admin__main">
-        <header v-if="!isWide" class="admin__bar">
-          <router-link to="/admin" class="admin__brand"><AdminBrand /></router-link>
-          <router-link
-            v-if="route.path === '/admin'"
-            to="/admin/sessions/new"
-            class="btn btn--primary admin__new"
-          >
-            ＋ 新增場次
-          </router-link>
-          <AccountMenu />
-        </header>
         <router-view />
       </div>
     </div>
@@ -51,15 +53,11 @@ watch(
 
 <style scoped lang="scss">
 .admin {
-  // 固定在頂端的區塊總高度：頂端細條 3px＋頂部列 56px（≥1280px 改用側欄，只剩細條）
+  // 固定在頂端的區塊總高度：頂端細條 3px＋頁首 56px（各尺寸相同）
   --admin-top: 59px;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--echo-page);
-
-  @media (min-width: 1280px) {
-    --admin-top: 3px;
-  }
 
   &__strip {
     position: sticky;

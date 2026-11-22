@@ -9,8 +9,8 @@ import { downloadPng, downloadSvg } from '@/utils/qr';
 import QrImage from './QrImage.vue';
 import QrProjector from './QrProjector.vue';
 
-const props = defineProps<{ session: Session; modelValue: boolean; opening?: boolean }>();
-const emit = defineEmits<{ 'update:modelValue': [v: boolean]; 'open-session': [] }>();
+const props = defineProps<{ session: Session; modelValue: boolean }>();
+const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>();
 
 const $q = useQuasar();
 const open = computed({ get: () => props.modelValue, set: (v) => emit('update:modelValue', v) });
@@ -44,18 +44,6 @@ async function copy() {
       <div class="share__head">
         <h2 class="share__title">分享場次：{{ session.title }}</h2>
         <button type="button" class="btn btn--text btn--muted" @click="open = false">關閉</button>
-      </div>
-
-      <div v-if="session.status === 'draft'" class="share__warn">
-        <span>場次尚未開放，會友掃碼後會看到「找不到此場次」。</span>
-        <button
-          type="button"
-          class="btn btn--primary"
-          :disabled="opening"
-          @click="emit('open-session')"
-        >
-          立即開放
-        </button>
       </div>
 
       <div class="share__qr">
@@ -139,21 +127,6 @@ async function copy() {
     font-size: 18px;
     font-weight: 600;
     line-height: 1.4;
-  }
-
-  &__warn {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 1px solid var(--echo-border);
-    border-radius: var(--echo-radius-sm);
-    font-size: 15px;
-
-    span {
-      flex: 1 1 200px;
-    }
   }
 
   &__qr {

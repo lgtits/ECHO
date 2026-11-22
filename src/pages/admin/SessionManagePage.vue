@@ -271,12 +271,13 @@ function showNew() {
     <header class="bar">
       <div class="bar__info">
         <template v-if="s">
-          <!-- 麵包屑：場次列表 › 場次標題（ux.md A4） -->
+          <!-- 返回連結：標題上方一行小字「‹ 場次列表」（ux.md A4） -->
           <nav class="crumb" aria-label="麵包屑">
-            <router-link to="/admin" class="crumb__link">場次列表</router-link>
-            <span class="crumb__sep" aria-hidden="true">›</span>
-            <h1 class="bar__title" aria-current="page">{{ s.title }}</h1>
+            <router-link to="/admin" class="crumb__link">
+              <span class="crumb__chev" aria-hidden="true">‹</span>場次列表
+            </router-link>
           </nav>
+          <h1 class="bar__title">{{ s.title }}</h1>
           <span class="bar__sub">
             {{ formatShortDate(s.sermonDate)
             }}<template v-if="s.speaker"> · {{ s.speaker }}</template> · 場次碼 {{ s.code }}
@@ -341,9 +342,7 @@ function showNew() {
     <section v-if="s && showHero" class="hero" aria-label="分享 QR">
       <div class="hero__qr"><QrImage :text="url" /></div>
       <div class="hero__text">
-        <p class="hero__lead">
-          {{ s.status === 'draft' ? '已存成草稿' : '場次已建立，會友現在可以掃碼留言' }}
-        </p>
+        <p class="hero__lead">場次已建立，會友現在可以掃碼留言</p>
         <p class="hero__code">{{ s.code }}</p>
         <p class="hero__url">{{ displayUrl(url) }}</p>
         <div class="hero__actions">
@@ -357,19 +356,6 @@ function showNew() {
         </div>
       </div>
     </section>
-
-    <!-- 草稿提醒（ux.md A3 ③'） -->
-    <div v-if="s?.status === 'draft'" class="draft">
-      <span>這是草稿：會友現在掃碼會看到「找不到此場次」。</span>
-      <button
-        type="button"
-        class="btn btn--primary"
-        :disabled="statusBusy"
-        @click="setStatus('open')"
-      >
-        開放留言
-      </button>
-    </div>
 
     <div class="cols">
       <section class="cols__list">
@@ -454,8 +440,6 @@ function showNew() {
       v-if="s"
       v-model="shareOpen"
       :session="s"
-      :opening="statusBusy"
-      @open-session="setStatus('open')"
     />
     <q-dialog v-if="s" v-model="autoOpen">
       <form class="auto-dialog" @submit.prevent="saveAutoClose">
@@ -496,6 +480,11 @@ function showNew() {
 </template>
 
 <style scoped lang="scss">
+.manage {
+  // 電腦版固定的場次標題列高度：返回連結＋標題＋日期資訊三行
+  --bar-h: 80px;
+}
+
 .auto-dialog {
   width: 400px;
   max-width: calc(100vw - 32px);
@@ -552,25 +541,26 @@ function showNew() {
 
 .crumb {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
 
   &__link {
-    flex-shrink: 0;
-    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: -2px;
+    font-size: 13px;
+    line-height: 18px;
     color: var(--echo-muted);
     text-decoration: none;
 
     &:hover {
-      color: var(--echo-text);
-      text-decoration: underline;
+      color: var(--echo-primary);
     }
   }
 
-  &__sep {
-    flex-shrink: 0;
-    color: var(--echo-faint);
+  &__chev {
+    font-size: 18px;
+    line-height: 1;
+    margin-top: -2px;
   }
 }
 
@@ -589,8 +579,8 @@ function showNew() {
     position: sticky;
     top: var(--admin-top, 3px);
     z-index: 16;
-    flex-wrap: nowrap; // 固定一行（回覆面板的位置以 65px 計算）
-    height: 65px;
+    flex-wrap: nowrap; // 固定一行（回覆面板的位置以 var(--bar-h) 計算）
+    height: var(--bar-h);
     padding-top: 0;
     padding-bottom: 0;
 
@@ -726,21 +716,6 @@ function showNew() {
   }
 }
 
-.draft {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--echo-line);
-  background: var(--echo-muted-bg);
-  font-size: 15px;
-
-  span {
-    flex: 1 1 240px;
-  }
-}
-
 .cols {
   display: flex;
   align-items: flex-start;
@@ -752,10 +727,10 @@ function showNew() {
 
   &__panel {
     position: sticky;
-    top: calc(var(--admin-top, 3px) + 65px); // 在固定的場次標題列下方
+    top: calc(var(--admin-top, 3px) + var(--bar-h)); // 在固定的場次標題列下方
     width: 340px;
     flex-shrink: 0;
-    height: calc(100vh - var(--admin-top, 3px) - 65px);
+    height: calc(100vh - var(--admin-top, 3px) - var(--bar-h));
     padding: 24px;
     border-left: 1px solid var(--echo-line);
     background: var(--echo-bg);

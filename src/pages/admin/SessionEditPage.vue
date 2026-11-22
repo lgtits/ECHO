@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // A3 建立／編輯場次（ux.md A3；AC5.2、AC5.9）。
-// 手機全螢幕；平板、筆電右側滑出面板（寬 480px），背後的頁面仍看得到。
+// 手機全螢幕；平板、筆電置中對話框（寬 520px），背後的頁面仍看得到。
 import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
@@ -50,8 +50,17 @@ const titleError = computed(() => {
   if (title.value.length > LIMITS.sessionTitle) return `標題最多 ${LIMITS.sessionTitle} 字`;
   return '';
 });
+/** 講員必填、預設空白（2026-11-22，ux.md A3） */
+const speakerTouched = ref(false);
+const speakerError = computed(() =>
+  (touched.value || speakerTouched.value) && !speaker.value.trim() ? '請輸入講員／主講人' : '',
+);
 const valid = computed(
-  () => !!title.value.trim() && title.value.length <= LIMITS.sessionTitle && !!sermonDate.value,
+  () =>
+    !!title.value.trim() &&
+    title.value.length <= LIMITS.sessionTitle &&
+    !!sermonDate.value &&
+    !!speaker.value.trim(),
 );
 
 function input() {
@@ -106,22 +115,15 @@ onMounted(async () => {
       initialAutoClose.value = s.autoCloseAt;
     }
     loading.value = false;
-  } else {
-    speaker.value = speakers.value[0] ?? ''; // 預設上一場的講員
   }
 });
 </script>
 
 <template>
-  <q-dialog
-    v-model="open"
-    :position="$q.screen.lt.sm ? 'standard' : 'right'"
-    :maximized="$q.screen.lt.sm"
-    full-height
-    @hide="onHide"
-  >
+  <!-- 手機：全螢幕；平板、電腦：畫面正中央的對話框（ux.md A3，2026-11-22） -->
+  <q-dialog v-model="open" :maximized="$q.screen.lt.sm" @hide="onHide">
     <!-- Quasar 只讓 q-dialog 的直接子層 div 接收點擊，所以外面要包 div -->
-    <div class="edit-shell">
+    <div class="edit-shell" :class="{ 'edit-shell--full': $q.screen.lt.sm }">
       <form
         class="edit"
         :aria-label="isEdit ? '編輯場次資訊' : '新增場次'"
@@ -157,14 +159,17 @@ onMounted(async () => {
           </div>
 
           <div class="field">
-            <label for="f-speaker" class="field__label">講員／主講人</label>
+            <label for="f-speaker" class="field__label">講員／主講人（必填）</label>
             <input
               id="f-speaker"
               v-model="speaker"
               class="input"
+              :class="{ 'input--invalid': speakerError }"
               list="speaker-options"
               autocomplete="off"
+              @blur="speakerTouched = true"
             />
+            <span v-if="speakerError" class="field__error">{{ speakerError }}</span>
             <datalist id="speaker-options">
               <option v-for="sp in speakers" :key="sp" :value="sp" />
             </datalist>
@@ -225,15 +230,31 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .edit-shell {
-  height: 100%;
+  display: flex;
+  max-height: calc(100vh - 48px);
+
+  // 手機全螢幕
+  &--full {
+    height: 100%;
+    max-height: none;
+
+    .edit {
+      width: 100vw;
+      height: 100%;
+      max-height: none;
+      border-radius: 0;
+    }
+  }
 }
 
 .edit {
   display: flex;
   flex-direction: column;
-  width: 480px;
-  max-width: 100vw;
-  height: 100%;
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border-radius: var(--echo-radius-lg);
   background: var(--echo-bg);
 
   &__head {
@@ -253,7 +274,8 @@ onMounted(async () => {
   }
 
   &__body {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;

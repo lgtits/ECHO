@@ -30,7 +30,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         component: () => import('@/pages/admin/SessionListPage.vue'),
-        // 新增場次：右側面板疊在列表上（ux.md A3）
+        // 新增場次：置中對話框疊在列表上（ux.md A3）
         children: [
           { path: 'sessions/new', component: () => import('@/pages/admin/SessionEditPage.vue') },
         ],
