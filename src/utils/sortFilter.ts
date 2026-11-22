@@ -2,13 +2,13 @@
 
 import type { Post } from '@/types/models';
 
-export type PostSort = 'newest' | 'top' | 'oldest';
+export type PostSort = 'newest' | 'top' | 'oldest' | 'replied';
 export type PostFilter = 'all' | 'pending' | 'answered' | 'hidden';
 export type FilterCounts = Record<PostFilter, number>;
 
-// 選單順序兩端相同：最新、最舊、最多附議（預設值不同，見 board store）
-export const MEMBER_SORTS: PostSort[] = ['newest', 'oldest', 'top'];
-export const ADMIN_SORTS: PostSort[] = ['newest', 'oldest', 'top'];
+// 選單順序兩端相同：最新、最舊、最多附議、最新回應
+export const MEMBER_SORTS: PostSort[] = ['newest', 'oldest', 'top', 'replied'];
+export const ADMIN_SORTS: PostSort[] = ['newest', 'oldest', 'top', 'replied'];
 
 /** 「全部」放第一個且為預設（D13）；會友看不到已隱藏 */
 export const MEMBER_FILTERS: PostFilter[] = ['all', 'pending', 'answered'];
@@ -18,6 +18,7 @@ export const SORT_LABEL: Record<PostSort, string> = {
   newest: '最新',
   oldest: '最舊',
   top: '最多附議',
+  replied: '最新回應',
 };
 
 export const FILTER_LABEL: Record<PostFilter, string> = {
@@ -59,6 +60,9 @@ export function countByFilter(posts: Post[]): FilterCounts {
 }
 
 const time = (p: Post) => new Date(p.createdAt).getTime();
+/** 最後一則回覆的時間；沒有回覆為 0 */
+const replyTime = (p: Post) =>
+  p.replies.reduce((max, r) => Math.max(max, new Date(r.createdAt).getTime() || 0), 0);
 
 export function comparePosts(sort: PostSort): (a: Post, b: Post) => number {
   switch (sort) {
@@ -70,6 +74,9 @@ export function comparePosts(sort: PostSort): (a: Post, b: Post) => number {
       // 附議數相同時，較新的在前
       return (a, b) =>
         b.upvoteCount - a.upvoteCount || time(b) - time(a) || a.id.localeCompare(b.id);
+    case 'replied':
+      // 最近有回覆的在前；沒有回覆的排在後面，依留言時間由新到舊
+      return (a, b) => replyTime(b) - replyTime(a) || time(b) - time(a) || a.id.localeCompare(b.id);
   }
 }
 

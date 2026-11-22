@@ -50,6 +50,20 @@ describe('sortPosts', () => {
     expect(sortPosts(posts, 'top').map((p) => p.id)).toEqual(['b', 'c', 'a']);
   });
 
+  it('最新回應：最近回覆的在前，沒有回覆的排後面（依留言由新到舊）', () => {
+    const at = (minute: number) => ({
+      ...reply,
+      createdAt: new Date(2026, 10, 8, 12, minute).toISOString(),
+    });
+    const list = [
+      post('a', 1, 0, { replies: [at(5)] }),
+      post('b', 2, 0, { replies: [at(1), at(9)] }),
+      post('c', 3),
+      post('d', 4),
+    ];
+    expect(sortPosts(list, 'replied').map((p) => p.id)).toEqual(['b', 'a', 'd', 'c']);
+  });
+
   it('不改變原陣列', () => {
     sortPosts(posts, 'top');
     expect(posts.map((p) => p.id)).toEqual(['a', 'b', 'c']);

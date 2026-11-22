@@ -15,7 +15,12 @@ defineProps<{
 }>();
 
 /** 按鈕上用短字，手機上四個篩選才放得下；選單裡用完整名稱 */
-const SORT_SHORT: Record<PostSort, string> = { newest: '最新', top: '附議', oldest: '最舊' };
+const SORT_SHORT: Record<PostSort, string> = {
+  newest: '最新',
+  top: '附議',
+  oldest: '最舊',
+  replied: '新回應',
+};
 
 const filter = defineModel<PostFilter>('filter', { required: true });
 const sort = defineModel<PostSort>('sort', { required: true });

@@ -73,8 +73,11 @@ export const useBoardStore = defineStore('board', () => {
       }).length,
   );
 
-  /** 「最多附議」下附議數變了但不即時重排（ux.md §6.2） */
-  const orderStale = computed(() => sort.value === 'top' && isOrderStale(visible.value, 'top'));
+  /** 「最多附議」「最新回應」下附議數或回覆變了但不即時重排（ux.md §6.2） */
+  const orderStale = computed(
+    () =>
+      (sort.value === 'top' || sort.value === 'replied') && isOrderStale(visible.value, sort.value),
+  );
 
   /** 可留言／附議：開放中且未到自動結束時間（與 DB 的 session_is_writable 相同） */
   const writable = computed(() => {

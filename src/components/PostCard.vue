@@ -114,7 +114,7 @@ const who = computed(() => props.post.nickname || '匿名');
         "
         @click="emit('upvote')"
       >
-        ↑ {{ post.upvoteCount }}<span v-if="post.upvotedByMe"> 已附議</span>
+        ↑ {{ post.upvoteCount }}
       </button>
     </div>
   </article>
