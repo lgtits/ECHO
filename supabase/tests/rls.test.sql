@@ -97,9 +97,11 @@ select is(
   (select count(*)::int from public.staff_members), 0,
   '會友讀不到管理者名單'
 );
+-- 會友可以接續留言（spec US10，見 comments.test.sql），但不能寫成牧者回覆
 select throws_ok(
-  $$insert into public.replies (post_id, body) values ('00000000-0000-0000-0000-0000000000d1', '偷回覆')$$,
-  'P0001', 'echo:forbidden', '會友不能回覆'
+  $$insert into public.replies (post_id, body, author_kind)
+    values ('00000000-0000-0000-0000-0000000000d1', '偷回覆', 'staff')$$,
+  '42501', null, '會友不能冒充牧者回覆'
 );
 
 -- 附議（AC3.1、3.2）

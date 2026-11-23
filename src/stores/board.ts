@@ -281,6 +281,22 @@ export const useBoardStore = defineStore('board', () => {
       posts.value[postId] = { ...p, replies: [...p.replies, r] };
   }
 
+  /** 會友接續留言（spec US10）；不改變列表順序（不算回應，AC10.3） */
+  async function addComment(postId: string, body: string, nickname: string) {
+    const r = await services.replies.comment(postId, body, nickname);
+    const p = get(postId);
+    if (p && !p.replies.some((x) => x.id === r.id))
+      posts.value[postId] = { ...p, replies: [...p.replies, r] };
+  }
+
+  /** 隱藏／取消隱藏接續留言（AC10.7） */
+  async function setReplyHidden(postId: string, replyId: string, hidden: boolean) {
+    const r = await services.replies.setHidden(replyId, hidden);
+    const p = get(postId);
+    if (p)
+      posts.value[postId] = { ...p, replies: p.replies.map((x) => (x.id === replyId ? r : x)) };
+  }
+
   async function updateReply(postId: string, replyId: string, body: string) {
     const r = await services.replies.update(replyId, body);
     const p = get(postId);
@@ -341,6 +357,8 @@ export const useBoardStore = defineStore('board', () => {
     setHidden,
     deletePost,
     addReply,
+    addComment,
+    setReplyHidden,
     updateReply,
     deleteReply,
     setSession,

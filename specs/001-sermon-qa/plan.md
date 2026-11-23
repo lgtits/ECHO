@@ -68,7 +68,8 @@ create table posts (
   nickname     text check (char_length(nickname) <= 20),
   body         text not null check (char_length(body) between 1 and 500),
   upvote_count int  not null default 0,   -- trigger 維護
-  reply_count  int  not null default 0,   -- trigger 維護（>0 即「已回應」）
+  reply_count  int  not null default 0,   -- trigger 維護：未封存的牧者回覆數（>0 即「已回應」）
+  comment_count int not null default 0,   -- trigger 維護：未封存、未隱藏的會友接續留言數（spec US10）
   is_hidden    boolean not null default false,
   hidden_by    uuid references staff_members(user_id),
   hidden_by_name text,                   -- 快照，管理端顯示「由 OO 隱藏」
@@ -85,18 +86,25 @@ create table upvotes (
   primary key (post_id, user_id)           -- 保證每人每則一次 (AC3.2)
 );
 
--- 管理者回覆
+-- 管理者回覆＋會友接續留言（spec US10、D21：同一張表，以 author_kind 區分）
 create table replies (
   id          uuid primary key default gen_random_uuid(),
   post_id     uuid not null references posts on delete cascade,
   session_id  uuid not null references sessions on delete cascade, -- 冗餘欄位：供 Realtime 以 session 過濾
-  author_id   uuid references staff_members(user_id) on delete set null,
-  author_name text not null,               -- 回應者名稱（前端填，預設「牧者」，1–20 字；spec D18）
-  body        text not null check (char_length(body) between 1 and 2000),
+  author_kind text not null default 'staff' check (author_kind in ('staff', 'member')),
+  author_id   uuid references staff_members(user_id) on delete set null, -- 只有牧者回覆有值
+  member_id   uuid references auth.users on delete set null, -- 只有接續留言有值；前端讀不到（D11），只供頻率限制
+  author_name text not null,               -- 回應者名稱（預設「牧者」）或會友暱稱（預設「匿名」），1–20 字
+  body        text not null check (char_length(body) between 1 and 2000), -- 接續留言另限 500 字
+  is_hidden   boolean not null default false, -- 只有接續留言可以隱藏
+  hidden_by   uuid references staff_members(user_id) on delete set null,
+  hidden_at   timestamptz,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
 ```
+
+> **為什麼接續留言和回覆共用一張表？**（2026-11-23）兩者顯示位置、即時同步、封存方式都一樣，共用可以沿用 `replies` 的 Realtime 訂閱與 `archive_reply`。差別（誰能寫、算不算已回應、能不能隱藏）由 `author_kind` 決定，全部在 trigger 與 RLS 強制。會友作者另存 `member_id`，而不是放進前端讀得到的 `author_id`，避免洩漏匿名身分。
 
 > **為什麼計數用欄位而不是即時 count？** 會友端排序「最多附議」需要直接 `order by upvote_count`，且 Realtime 可直接推送 posts 的 UPDATE。由 trigger 維護可避免前端偽造。
 
@@ -123,8 +131,9 @@ create table replies (
 | `posts_before_insert`     | BEFORE INSERT       | 強制 `author_id = auth.uid()`；檢查 `session_is_writable()`；頻率限制（同一人 60 秒內 ≥ 5 則則拒絕，AC2.3） |
 | `posts_before_update`     | BEFORE UPDATE       | 只允許變更 `is_hidden`；自動填 `hidden_by / hidden_at`                                                      |
 | `upvotes_after_change`    | AFTER INSERT/DELETE | 更新 `posts.upvote_count`                                                                                   |
-| `replies_before_insert`   | BEFORE INSERT       | 填 `author_id`、`session_id`；`author_name` 去頭尾空白，空白時填「牧者」（spec D18）                         |
-| `replies_after_change`    | AFTER INSERT/DELETE/UPDATE OF deleted_at | 更新 `posts.reply_count`（封存減一、還原加一，spec D20）                                  |
+| `replies_before_insert`   | BEFORE INSERT       | 管理者：`author_kind = staff`、填 `author_id`，名稱空白時填「牧者」（spec D18）。會友：`author_kind = member`、填 `member_id`，名稱空白時填「匿名」，檢查留言可見且場次可寫入、60 秒內 ≥ 5 則拒絕（spec US10） |
+| `replies_before_update`   | BEFORE UPDATE       | 接續留言不能改內容；只有接續留言能隱藏，自動填 `hidden_by / hidden_at`                                       |
+| `replies_after_change`    | AFTER INSERT/DELETE/UPDATE OF deleted_at, is_hidden | 重新計算 `posts.reply_count`（牧者回覆）與 `comment_count`（未隱藏的接續留言）；封存、還原、隱藏都會更新，因此一定會產生 posts 的 UPDATE 事件 |
 | `posts_broadcast_removed` | AFTER UPDATE/DELETE | 留言被隱藏或封存（刪除）時，以 `realtime.send` 廣播 `{post_id}` 到 `session:<id>`（見 §5）                  |
 | `sessions_broadcast_removed` | AFTER UPDATE OF deleted_at | 場次被封存（刪除）時廣播 `session_removed` 到 `session:<id>`，開著的畫面顯示「找不到此場次」（spec D20） |
 | `touch_updated_at`        | BEFORE UPDATE       | sessions / replies 的 `updated_at`                                                                          |
@@ -167,8 +176,9 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 |               | 刪除（`archive_post`）   | ✗（spec D9）                                      | ✓ 封存（spec D15、D20）；沒有 DELETE 權限    |
 | upvotes       | SELECT                   | 只看自己的（判斷已附議）                          | 只看自己的                                   |
 |               | INSERT / DELETE          | 自己的，且留言可見、場次可寫入                    | 同左                                         |
-| replies       | SELECT                   | 未封存，且所屬留言可見時                          | 未封存，且所屬留言可見時                     |
-|               | INSERT / UPDATE          | ✗                                                 | ✓（封存的不能改）                            |
+| replies       | SELECT                   | 未封存、未隱藏，且所屬留言可見時（不含 `member_id`） | 未封存，且所屬留言可見時（不含 `member_id`） |
+|               | INSERT                   | 接續留言：留言可見且場次可寫入（spec US10）       | ✓（存成牧者回覆）                            |
+|               | UPDATE                   | ✗                                                 | 牧者回覆可改 `body`；接續留言只能改 `is_hidden`（封存的不能改） |
 |               | 刪除（`archive_reply`）  | ✗                                                 | ✓ 封存（spec D20）；沒有 DELETE 權限         |
 | staff_members | SELECT                   | ✗                                                 | 全部                                         |
 
@@ -185,7 +195,8 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 | 場次狀態（含自動結束） | `postgres_changes` UPDATE on `sessions` filter `id=eq.<id>`       | 切換開放／唯讀、更新「留言開放至」 |
 | 新留言                 | `postgres_changes` INSERT on `posts` filter `session_id=eq.<id>`  | 插入列表                           |
 | 附議數 / 回覆數變化    | `postgres_changes` UPDATE on `posts`                              | 更新該筆                           |
-| 新回覆 / 修改回覆      | `postgres_changes` on `replies` filter `session_id=eq.<id>`       | 更新回覆                           |
+| 新回覆 / 修改回覆／接續留言 | `postgres_changes` on `replies` filter `session_id=eq.<id>`  | 更新回覆                           |
+| 接續留言被隱藏／刪除   | `posts.comment_count` 變動 → posts 的 UPDATE                      | 重新讀取該則留言                   |
 | 留言被隱藏 / 刪除      | **Broadcast**（DB trigger `realtime.send`）payload 只含 `post_id` | 從列表移除                         |
 | 斷線重連               | channel `SUBSCRIBED` 狀態回復時                                   | 重新抓取完整列表 (AC4.3)           |
 
@@ -359,3 +370,4 @@ DB 產生場次碼 ──▶ 前端組網址 ──▶ qrcode 套件在瀏覽器
 | FR-012 | posts UPDATE policy + trigger                        | pgTAP               |
 | FR-013 | utils/export.ts                                      | Vitest              |
 | FR-014 | StageView.vue（篩選/排序沿用 utils/sortFilter.ts）   | 手動（平板實測）    |
+| FR-016 | replies trigger + policy、CommentSheet、PostCard     | pgTAP（`comments.test.sql`）、Vitest |

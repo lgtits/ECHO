@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useBreakpoint } from '@/composables/useBreakpoint';
 import PostCard from '@/components/PostCard.vue';
 import PostComposer from '@/components/PostComposer.vue';
+import CommentSheet from '@/components/CommentSheet.vue';
 import MemberHeader from '@/components/MemberHeader.vue';
 import QrProjector from '@/components/QrProjector.vue';
 import { buildSessionUrl } from '@/utils/sessionUrl';
@@ -26,6 +27,12 @@ const { isDesktop, isPhone } = useBreakpoint();
 
 const code = computed(() => String(route.params.code ?? '').toUpperCase());
 const composerOpen = ref(false);
+/** 接續留言的對象（spec US10） */
+const commentPostId = ref<string | null>(null);
+const commentOpen = ref(false);
+const commentPost = computed(() =>
+  commentPostId.value ? board.get(commentPostId.value) : undefined,
+);
 /** 全螢幕 QR：會友端也能開，方便負責投影的人員使用（AC5.12） */
 const qrOpen = ref(false);
 const scrolled = ref(false);
@@ -95,6 +102,11 @@ function zoom(postId?: string) {
 
 function openComposer() {
   composerOpen.value = true;
+}
+
+function openComment(postId: string) {
+  commentPostId.value = postId;
+  commentOpen.value = true;
 }
 </script>
 
@@ -183,6 +195,7 @@ function openComposer() {
           mode="member"
           :writable="board.writable"
           @upvote="upvote(p.id)"
+          @comment="openComment(p.id)"
         />
       </TransitionGroup>
     </main>
@@ -207,6 +220,8 @@ function openComposer() {
     <p v-else-if="closed" class="page desk-closed">本場次已結束，感謝你的回應</p>
 
     <PostComposer v-if="!isDesktop" v-model="composerOpen" variant="dialog" />
+
+    <CommentSheet v-if="commentPost" v-model="commentOpen" :post="commentPost" />
 
     <QrProjector
       v-if="s && qrOpen"

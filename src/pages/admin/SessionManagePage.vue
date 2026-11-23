@@ -239,6 +239,44 @@ function confirmDeleteReply(postId: string, replyId: string) {
   });
 }
 
+/** 會友接續留言：隱藏不跳確認，5 秒內可復原（AC10.7） */
+async function hideComment(postId: string, replyId: string, hidden: boolean) {
+  try {
+    await board.setReplyHidden(postId, replyId, hidden);
+    $q.notify({
+      message: hidden ? '已隱藏' : '已取消隱藏',
+      timeout: 5000,
+      actions: hidden
+        ? [
+            {
+              label: '復原',
+              color: 'white',
+              noCaps: true,
+              handler: () => void board.setReplyHidden(postId, replyId, false),
+            },
+          ]
+        : [],
+    });
+  } catch (e) {
+    $q.notify({ message: errorMessage(e) });
+  }
+}
+
+/** 刪除接續留言＝封存（AC10.7、D20），先確認 */
+function confirmDeleteComment(postId: string, replyId: string) {
+  $q.dialog({
+    title: '刪除這則接續留言？',
+    message: '刪除後，會友與管理端都看不到這則接續留言；資料仍會保留。只是不想讓會友看到的話，可以改用「隱藏」。',
+    cancel: { label: '取消', flat: true, noCaps: true, color: 'dark' },
+    ok: { label: '刪除', flat: true, noCaps: true, color: 'negative' },
+  }).onOk(() => {
+    board
+      .deleteReply(postId, replyId)
+      .then(() => $q.notify({ message: '已刪除接續留言' }))
+      .catch((e: unknown) => $q.notify({ message: errorMessage(e) }));
+  });
+}
+
 /** 頁首「放大」：從目前篩選與排序的第一則開始（AC9.1） */
 function zoom() {
   board.startStage();
@@ -405,6 +443,8 @@ function showNew() {
             @hide="hide(p.id, $event)"
             @delete="confirmDelete(p.id)"
             @delete-reply="confirmDeleteReply(p.id, $event)"
+            @hide-comment="(rid, hidden) => hideComment(p.id, rid, hidden)"
+            @delete-comment="confirmDeleteComment(p.id, $event)"
           />
         </TransitionGroup>
       </section>

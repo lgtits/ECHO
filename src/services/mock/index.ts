@@ -1,10 +1,10 @@
 // 假資料實作（plan §6.1）。只模擬畫面需要的行為；真正的權限在 Phase 2 以 RLS 實作。
 
 import type { Post, Reply, Session, SessionSummary, Viewer } from '@/types/models';
-import { DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
+import { ANONYMOUS, DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
 import { ServiceError } from '../types';
 import type { ConnectionState, Services, SessionEventHandlers } from '../types';
-import type { DbPost, DbSession } from './db';
+import type { DbPost, DbReply, DbSession } from './db';
 import {
   MOCK_ADMIN,
   commit,
@@ -52,21 +52,29 @@ function applyAutoClose(): boolean {
 
 const toSession = (s: DbSession): Session => ({ ...s });
 
+/** 與 DB 相同：接續留言不公開作者（spec D11） */
+const toReply = (r: DbReply): Reply => ({
+  id: r.id,
+  postId: r.postId,
+  authorKind: r.authorKind,
+  authorId: r.authorKind === 'staff' ? r.authorId : null,
+  authorName: r.authorName,
+  body: r.body,
+  isHidden: r.isHidden,
+  hiddenAt: r.hiddenAt,
+  createdAt: r.createdAt,
+  updatedAt: r.updatedAt,
+});
+
 function toPost(p: DbPost, uid: string): Post {
   const d = db();
   const votes = d.upvotes.filter((u) => u.postId === p.id);
+  // 會友看不到隱藏的接續留言（與 RLS 相同）
+  const staff = !!currentStaff();
   const replies: Reply[] = d.replies
-    .filter((r) => r.postId === p.id)
+    .filter((r) => r.postId === p.id && (staff || !r.isHidden))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-    .map((r) => ({
-      id: r.id,
-      postId: r.postId,
-      authorId: r.authorId,
-      authorName: r.authorName,
-      body: r.body,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-    }));
+    .map(toReply);
   return {
     id: p.id,
     sessionId: p.sessionId,
@@ -86,7 +94,7 @@ function summarize(s: DbSession): SessionSummary {
   const posts = db().posts.filter((p) => p.sessionId === s.id && !p.isHidden);
   const replied = new Set(
     db()
-      .replies.filter((r) => r.sessionId === s.id)
+      .replies.filter((r) => r.sessionId === s.id && r.authorKind === 'staff')
       .map((r) => r.postId),
   );
   return {
@@ -425,19 +433,71 @@ export const mockServices: Services = {
         throw new ServiceError('invalid_input');
       const p = findPost(postId);
       const now = new Date().toISOString();
-      const r = {
+      const r: DbReply = {
         id: newId('reply-'),
         postId,
         sessionId: p.sessionId,
+        authorKind: 'staff',
         authorId: v.uid,
         authorName: name || DEFAULT_REPLY_AUTHOR,
         body: text,
+        isHidden: false,
+        hiddenAt: null,
         createdAt: now,
         updatedAt: now,
       };
       db().replies.push(r);
       commit();
-      return { ...r };
+      return toReply(r);
+    },
+    async comment(postId, body, nickname) {
+      await delay(250, 500);
+      assertOnline();
+      const v = viewer();
+      const text = body.trim();
+      const name = nickname.trim();
+      if (!text || text.length > LIMITS.commentBody || name.length > LIMITS.nickname)
+        throw new ServiceError('invalid_input');
+      const p = findPost(postId);
+      // 管理者寫的一律是牧者回覆（AC10.9）
+      if (v.staff) return mockServices.replies.create(postId, text, name);
+      if (p.isHidden || !writable(findSession(p.sessionId)))
+        throw new ServiceError('session_closed');
+      const since = Date.now() - 60000;
+      const recent = db().replies.filter(
+        (r) => r.authorId === v.uid && new Date(r.createdAt).getTime() > since,
+      );
+      if (recent.length >= LIMITS.postsPerMinute) throw new ServiceError('rate_limited');
+      const now = new Date().toISOString();
+      const r: DbReply = {
+        id: newId('reply-'),
+        postId,
+        sessionId: p.sessionId,
+        authorKind: 'member',
+        authorId: v.uid,
+        authorName: name || ANONYMOUS,
+        body: text,
+        isHidden: false,
+        hiddenAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      db().replies.push(r);
+      commit();
+      return toReply(r);
+    },
+    async setHidden(replyId, hidden) {
+      await delay(120, 250);
+      assertOnline();
+      requireStaff();
+      const r = db().replies.find((x) => x.id === replyId);
+      if (!r) throw new ServiceError('not_found');
+      if (r.authorKind !== 'member') throw new ServiceError('forbidden');
+      r.isHidden = hidden;
+      r.hiddenAt = hidden ? new Date().toISOString() : null;
+      r.updatedAt = new Date().toISOString();
+      commit();
+      return toReply(r);
     },
     async update(replyId, body) {
       await delay(250, 500);
@@ -445,13 +505,13 @@ export const mockServices: Services = {
       const v = requireStaff();
       const r = db().replies.find((x) => x.id === replyId);
       if (!r) throw new ServiceError('not_found');
-      if (r.authorId !== v.uid) throw new ServiceError('forbidden');
+      if (r.authorKind !== 'staff' || r.authorId !== v.uid) throw new ServiceError('forbidden');
       const text = body.trim();
       if (!text || text.length > LIMITS.replyBody) throw new ServiceError('invalid_input');
       r.body = text;
       r.updatedAt = new Date().toISOString();
       commit();
-      return { ...r };
+      return toReply(r);
     },
     async remove(replyId) {
       await delay();
@@ -459,7 +519,8 @@ export const mockServices: Services = {
       const v = requireStaff();
       const r = db().replies.find((x) => x.id === replyId);
       if (!r) throw new ServiceError('not_found');
-      if (r.authorId !== v.uid) throw new ServiceError('forbidden');
+      // 管理者可以刪除自己的回覆與會友的接續留言（AC7.5、AC10.7）
+      if (r.authorKind === 'staff' && r.authorId !== v.uid) throw new ServiceError('forbidden');
       db().replies = db().replies.filter((x) => x.id !== replyId);
       commit();
     },

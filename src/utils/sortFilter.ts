@@ -1,6 +1,6 @@
 // 留言排序與篩選（FR-006；AC3.3、AC6.1）。純函式，store 與講台模式共用。
 
-import type { Post } from '@/types/models';
+import type { Post, Reply } from '@/types/models';
 
 export type PostSort = 'newest' | 'top' | 'oldest' | 'replied';
 export type PostFilter = 'all' | 'pending' | 'answered' | 'hidden';
@@ -28,9 +28,12 @@ export const FILTER_LABEL: Record<PostFilter, string> = {
   hidden: '已隱藏',
 };
 
-/** 只有文字回覆才算已回應（D3） */
+/** 牧者回覆；會友的接續留言不算（spec AC10.3） */
+const isStaffReply = (r: Reply) => r.authorKind === 'staff';
+
+/** 只有牧者的文字回覆才算已回應（D3、AC10.3） */
 export function isAnswered(p: Post): boolean {
-  return p.replies.length > 0;
+  return p.replies.some(isStaffReply);
 }
 
 export function matchesFilter(p: Post, filter: PostFilter): boolean {
@@ -60,9 +63,11 @@ export function countByFilter(posts: Post[]): FilterCounts {
 }
 
 const time = (p: Post) => new Date(p.createdAt).getTime();
-/** 最後一則回覆的時間；沒有回覆為 0 */
+/** 最後一則牧者回覆的時間；沒有回覆為 0（接續留言不算，AC10.3） */
 const replyTime = (p: Post) =>
-  p.replies.reduce((max, r) => Math.max(max, new Date(r.createdAt).getTime() || 0), 0);
+  p.replies
+    .filter(isStaffReply)
+    .reduce((max, r) => Math.max(max, new Date(r.createdAt).getTime() || 0), 0);
 
 export function comparePosts(sort: PostSort): (a: Post, b: Post) => number {
   switch (sort) {

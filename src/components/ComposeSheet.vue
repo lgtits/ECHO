@@ -213,6 +213,11 @@ defineExpose({ focus });
   &--kb &__foot {
     padding-bottom: 4px;
   }
+
+  // 鍵盤彈出時可視範圍只剩一半左右，上方內容讓出空間給輸入框
+  &--kb &__context {
+    max-height: 30%;
+  }
 }
 </style>
 

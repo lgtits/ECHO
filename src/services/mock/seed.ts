@@ -98,12 +98,39 @@ export function buildSeed(myUid: string): MockDb {
       number,
       number,
       string,
-      { mine?: boolean; votedByMe?: boolean; hidden?: boolean; reply?: boolean }?,
+      {
+        mine?: boolean;
+        votedByMe?: boolean;
+        hidden?: boolean;
+        reply?: boolean;
+        comments?: { name?: string; ago: number; body: string; hidden?: boolean }[];
+      }?,
     ]
   > = [
-    ['小明', 3, 12, SAMPLE_POSTS[0]!, { reply: true, votedByMe: true }],
+    [
+      '小明',
+      3,
+      12,
+      SAMPLE_POSTS[0]!,
+      {
+        reply: true,
+        votedByMe: true,
+        comments: [{ name: '以利亞', ago: 2, body: '我也一直想問這個，謝謝你提出來。' }],
+      },
+    ],
     [null, 5, 3, '今天的信息很受激勵，謝謝牧師分享自己軟弱時的經歷。', { mine: true }],
-    [null, 6, 8, SAMPLE_POSTS[1]!],
+    [
+      null,
+      6,
+      8,
+      SAMPLE_POSTS[1]!,
+      {
+        comments: [
+          { ago: 4, body: '我覺得可以從禱告開始，每天固定一個時間。' },
+          { name: '小羊', ago: 3, body: '加我 LINE 一起團購靈修書籍！', hidden: true },
+        ],
+      },
+    ],
     ['阿華', 8, 5, SAMPLE_POSTS[2]!],
     ['恩恩', 10, 2, SAMPLE_POSTS[3]!],
     ['小羊', 14, 0, '團購營養品有需要的私訊我，教會價打八折！', { hidden: true }],
@@ -129,11 +156,30 @@ export function buildSeed(myUid: string): MockDb {
         id: id('reply'),
         postId: p.id,
         sessionId: open.id,
+        authorKind: 'staff',
         authorId: 'staff-pastor',
         authorName: '王牧師',
         body: SAMPLE_REPLY,
+        isHidden: false,
+        hiddenAt: null,
         createdAt: minAgo(1),
         updatedAt: minAgo(1),
+      });
+    }
+    // 會友接續留言（spec US10）：一則在牧者回覆之前、一則已隱藏
+    for (const c of o.comments ?? []) {
+      replies.push({
+        id: id('reply'),
+        postId: p.id,
+        sessionId: open.id,
+        authorKind: 'member',
+        authorId: id('fake-author'),
+        authorName: c.name ?? '匿名',
+        body: c.body,
+        isHidden: !!c.hidden,
+        hiddenAt: c.hidden ? minAgo(c.ago - 1) : null,
+        createdAt: minAgo(c.ago),
+        updatedAt: minAgo(c.ago),
       });
     }
   }
@@ -196,8 +242,11 @@ export function buildSeed(myUid: string): MockDb {
           id: id('reply'),
           postId: p.id,
           sessionId: s.id,
+          authorKind: 'staff',
           authorId: 'staff-pastor',
           authorName: speaker === '王牧師' ? '王牧師' : speaker,
+          isHidden: false,
+          hiddenAt: null,
           body: '謝謝你的提問。這段經文的重點在於神主動的恩典，我們的回應是信靠與順服。歡迎在小組中繼續分享。',
           createdAt: new Date(new Date(created).getTime() + 3600000).toISOString(),
           updatedAt: new Date(new Date(created).getTime() + 3600000).toISOString(),

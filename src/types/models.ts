@@ -25,13 +25,21 @@ export interface SessionSummary extends Session {
   pendingCount: number;
 }
 
+/** staff = 牧者回覆；member = 會友接續留言（spec US10、D21） */
+export type ReplyAuthorKind = 'staff' | 'member';
+
 export interface Reply {
   id: string;
   postId: string;
+  authorKind: ReplyAuthorKind;
+  /** 只有牧者回覆有值；接續留言不公開作者（spec D11） */
   authorId: string | null;
-  /** 回覆當下的顯示名稱快照，例：王牧師（Q4） */
+  /** 回應者名稱（例：王牧師，預設「牧者」）或會友暱稱（預設「匿名」） */
   authorName: string;
   body: string;
+  /** 只有接續留言能隱藏；會友端看不到隱藏的 */
+  isHidden: boolean;
+  hiddenAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,6 +85,8 @@ export interface PostInput {
 
 /** 回應者名稱留空時顯示的名稱（spec AC6.2、D18；DB trigger 同值） */
 export const DEFAULT_REPLY_AUTHOR = '牧者';
+/** 會友沒填暱稱時顯示的名稱（DB trigger 同值） */
+export const ANONYMOUS = '匿名';
 
 /** 限制值（spec AC2.1、AC2.3、AC6.2；DB 端以 check / trigger 強制） */
 export const LIMITS = {
@@ -84,6 +94,8 @@ export const LIMITS = {
   nickname: 20,
   replyBody: 2000,
   replyAuthor: 20,
+  /** 接續留言與留言相同（spec AC10.1） */
+  commentBody: 500,
   sessionTitle: 100,
   postsPerMinute: 5,
   pastPageSize: 20,

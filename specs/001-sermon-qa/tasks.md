@@ -130,6 +130,11 @@
 - [x] **T143** 場次管理頁麵包屑改為標題上方一行小字「‹ 場次列表」；電腦版標題列高度改用 `--bar-h: 80px`（回覆面板位置跟著算）（ux.md A4，2026-11-22）
 - [x] **T144** 回應者名稱改存 `localStorage`（原 `sessionStorage`），同一台裝置關掉瀏覽器後下次仍自動帶入上次填的名稱（spec AC6.2、ux.md A5，2026-11-22）
 - [x] **T145** 場次表單「講員／主講人」改為必填、預設空白（不再帶入上一場的講員，仍保留過去講員的輸入提示）；未填顯示「請輸入講員／主講人」（spec AC5.2、ux.md A3，2026-11-22）
+- [~] **T146** 會友接續留言（spec US10、D21；ux.md M5）：migration `20261123000000_member_comments.sql`（`replies.author_kind`／`member_id`／`is_hidden`、`posts.comment_count`、trigger、RLS、欄位權限）+ pgTAP `comments.test.sql`、`rls.test.sql` 調整；services（mock、supabase）`replies.comment`、`replies.setHidden`；`sortFilter` 只用牧者回覆判斷已回應與「最新回應」+ Vitest；`PostCard` 會友模式「留言」按鈕、接續留言樣式、管理模式隱藏／刪除；`CommentSheet`（2026-11-23）。待在 Supabase 執行 migration `👤`
+- [x] **T147** 會友端附議、留言按鈕改為圖示＋數字（粗箭頭：未附議中空、已附議填滿／`chat_bubble_outline`，inline SVG）；留言按鈕在場次結束後停用但仍顯示則數（spec AC10.4、ux.md M2／M5，2026-11-23）
+- [x] **T148** 附議、留言圖示按鈕拿掉外框與底色（已附議改為深抹茶色；圖示與數字垂直置中）；接續留言面板上方只顯示最近 2 則，較早的可展開；`ComposeSheet` 鍵盤彈出時上方區塊降為 30%（ux.md M2／M5／§5，2026-11-23）
+- [x] **T149** 留言卡片的接續留言超過 3 則時只顯示最近 2 則，較早的收成「顯示其他 N 則留言」，展開後可「收合留言」；牧者回覆一律顯示（ux.md M2，2026-11-23）
+- [x] **T150** 管理端留言卡片的附議數與「回覆」改為與會友端相同的圖示＋數字（中空箭頭、留言泡泡）；圖示抽成共用元件 `ActionIcon`（ux.md A4、§5，2026-11-23）
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 

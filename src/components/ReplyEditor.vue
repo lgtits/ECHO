@@ -111,8 +111,17 @@ function onKeydown(e: KeyboardEvent, action: () => void) {
     </div>
 
     <ul v-if="post.replies.length" class="editor__replies">
-      <li v-for="r in post.replies" :key="r.id" class="editor__reply">
-        <div class="editor__meta">{{ r.authorName }} · {{ formatPostTime(r.createdAt) }}</div>
+      <li
+        v-for="r in post.replies"
+        :key="r.id"
+        class="editor__reply"
+        :class="{ 'editor__reply--member': r.authorKind === 'member' }"
+      >
+        <!-- 會友接續留言（spec US10）：只顯示，隱藏、刪除在留言卡片上操作 -->
+        <div class="editor__meta">
+          {{ r.authorName }} · {{ formatPostTime(r.createdAt)
+          }}<template v-if="r.isHidden"> · 已隱藏</template>
+        </div>
         <template v-if="editingId === r.id">
           <textarea
             v-model="editBody"
@@ -137,7 +146,10 @@ function onKeydown(e: KeyboardEvent, action: () => void) {
         </template>
         <template v-else>
           <div class="editor__reply-body">{{ r.body }}</div>
-          <div v-if="r.authorId === auth.viewer?.uid" class="editor__row editor__row--start">
+          <div
+            v-if="r.authorKind === 'staff' && r.authorId === auth.viewer?.uid"
+            class="editor__row editor__row--start"
+          >
             <button type="button" class="btn btn--text" @click="startEdit(r.id, r.body)">
               編輯
             </button>
@@ -239,6 +251,14 @@ function onKeydown(e: KeyboardEvent, action: () => void) {
     display: flex;
     flex-direction: column;
     gap: 6px;
+
+    // 會友接續留言：左側細線、不加底色（同留言卡片）
+    &--member {
+      padding: 2px 0 2px 12px;
+      border-left: 2px solid var(--echo-line);
+      border-radius: 0;
+      background: transparent;
+    }
   }
 
   &__reply-body {

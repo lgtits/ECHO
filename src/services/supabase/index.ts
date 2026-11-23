@@ -340,6 +340,33 @@ export function createSupabaseServices(url: string, key: string): Services {
         );
         return toReply(row);
       },
+      // 接續留言（spec US10）：同一張表，DB 依身分決定是會友接續留言或牧者回覆
+      async comment(postId, body, nickname) {
+        const text = body.trim();
+        const name = nickname.trim();
+        if (!text || text.length > LIMITS.commentBody || name.length > LIMITS.nickname)
+          throw new ServiceError('invalid_input');
+        await ensureUser();
+        const row = check(
+          await db
+            .from('replies')
+            .insert({ post_id: postId, body: text, author_name: name || null })
+            .select(REPLY_COLUMNS)
+            .single<ReplyRow>(),
+        );
+        return toReply(row);
+      },
+      async setHidden(replyId, hidden) {
+        const row = check(
+          await db
+            .from('replies')
+            .update({ is_hidden: hidden })
+            .eq('id', replyId)
+            .select(REPLY_COLUMNS)
+            .single<ReplyRow>(),
+        );
+        return toReply(row);
+      },
       async update(replyId, body) {
         const text = body.trim();
         if (!text || text.length > LIMITS.replyBody) throw new ServiceError('invalid_input');
@@ -444,11 +471,17 @@ export function createSupabaseServices(url: string, key: string): Services {
             { event: 'UPDATE', schema: 'public', table: 'posts', filter: sessionFilter },
             ({ new: row }) => {
               const prev = known.get(row.id);
-              // 只有附議數變了：直接套用，不必每個人都重新查詢
+              // 只有附議數變了：直接套用，不必每個人都重新查詢。
+              // 接續留言被隱藏後會友讀不到那一列，靠 comment_count 變動得知要重新讀取（plan §5）
+              const staffReplies = prev?.replies.filter((r) => r.authorKind === 'staff').length;
+              const comments = prev?.replies.filter(
+                (r) => r.authorKind === 'member' && !r.isHidden,
+              ).length;
               if (
                 prev &&
                 typeof row.upvote_count === 'number' &&
-                row.reply_count === prev.replies.length &&
+                row.reply_count === staffReplies &&
+                row.comment_count === comments &&
                 row.is_hidden === prev.isHidden
               ) {
                 handlers.onPostUpsert(remember({ ...prev, upvoteCount: row.upvote_count }));

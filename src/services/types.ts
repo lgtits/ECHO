@@ -82,6 +82,13 @@ export interface PostsService {
 export interface RepliesService {
   /** authorName 留空時由 DB 填「牧者」（spec D18） */
   create(postId: string, body: string, authorName: string): Promise<Reply>;
+  /**
+   * 接續留言（spec US10）。nickname 留空顯示「匿名」。
+   * 管理者呼叫時由 DB 存成牧者回覆，nickname 當作回應者名稱（AC10.9）。
+   */
+  comment(postId: string, body: string, nickname: string): Promise<Reply>;
+  /** 隱藏／取消隱藏會友的接續留言（AC10.7） */
+  setHidden(replyId: string, hidden: boolean): Promise<Reply>;
   update(replyId: string, body: string): Promise<Reply>;
   /** 刪除＝封存（spec D20） */
   remove(replyId: string): Promise<void>;

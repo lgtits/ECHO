@@ -6,6 +6,7 @@ import { useQuasar } from 'quasar';
 import { useBoardStore } from '@/stores/board';
 import { LIMITS } from '@/types/models';
 import { errorMessage } from '@/utils/errors';
+import { useNickname } from '@/composables/useNickname';
 import ComposeSheet from './ComposeSheet.vue';
 
 const props = defineProps<{
@@ -18,7 +19,6 @@ const emit = defineEmits<{ 'update:modelValue': [open: boolean] }>();
 const $q = useQuasar();
 const board = useBoardStore();
 
-const NICK_KEY = 'echo.nickname';
 const draftKey = computed(() => `echo.draft.${board.session?.id ?? ''}`);
 
 function readStorage(store: Storage, key: string): string {
@@ -38,7 +38,7 @@ function writeStorage(store: Storage, key: string, value: string) {
 }
 
 const body = ref(readStorage(sessionStorage, draftKey.value));
-const nickname = ref(readStorage(localStorage, NICK_KEY)); // 暱稱記憶於該裝置（AC2.2）
+const nickname = useNickname(); // 暱稱記憶於該裝置（AC2.2），與接續留言共用
 const sending = ref(false);
 const error = ref('');
 
@@ -66,7 +66,6 @@ async function submit() {
   error.value = '';
   try {
     const nick = nickname.value.trim();
-    writeStorage(localStorage, NICK_KEY, nick);
     await board.createPost({ body: trimmed.value, nickname: nick || null });
     body.value = '';
     open.value = false;

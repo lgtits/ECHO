@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Post } from '@/types/models';
+import type { Post, Reply } from '@/types/models';
 import {
   countByFilter,
   insertionIndex,
@@ -25,15 +25,21 @@ function post(id: string, minute: number, upvotes = 0, extra: Partial<Post> = {}
   };
 }
 
-const reply = {
+const reply: Reply = {
   id: 'r',
   postId: 'x',
+  authorKind: 'staff',
   authorId: null,
   authorName: '王牧師',
   body: '回覆',
+  isHidden: false,
+  hiddenAt: null,
   createdAt: '',
   updatedAt: '',
 };
+
+/** 會友接續留言（spec US10） */
+const comment: Reply = { ...reply, id: 'c', authorKind: 'member', authorName: '以利亞' };
 
 describe('sortPosts', () => {
   const posts = [post('a', 1, 3), post('b', 2, 9), post('c', 3, 3)];
@@ -64,6 +70,19 @@ describe('sortPosts', () => {
     expect(sortPosts(list, 'replied').map((p) => p.id)).toEqual(['b', 'a', 'd', 'c']);
   });
 
+  it('最新回應：會友接續留言不算回應（AC10.3）', () => {
+    const at = (r: Reply, minute: number) => ({
+      ...r,
+      createdAt: new Date(2026, 10, 8, 12, minute).toISOString(),
+    });
+    const list = [
+      post('a', 1, 0, { replies: [at(reply, 5)] }),
+      post('b', 2, 0, { replies: [at(reply, 1), at(comment, 9)] }),
+      post('c', 3, 0, { replies: [at(comment, 30)] }),
+    ];
+    expect(sortPosts(list, 'replied').map((p) => p.id)).toEqual(['a', 'b', 'c']);
+  });
+
   it('不改變原陣列', () => {
     sortPosts(posts, 'top');
     expect(posts.map((p) => p.id)).toEqual(['a', 'b', 'c']);
@@ -85,6 +104,12 @@ describe('篩選（AC6.1）', () => {
     expect(
       [answered, hidden, pending].filter((p) => matchesFilter(p, 'answered')).map((p) => p.id),
     ).toEqual(['ans']);
+  });
+
+  it('只有接續留言的仍是待回應（AC10.3）', () => {
+    const onlyComment = post('com', 4, 0, { replies: [comment] });
+    expect(matchesFilter(onlyComment, 'pending')).toBe(true);
+    expect(matchesFilter(onlyComment, 'answered')).toBe(false);
   });
 
   it('全部不含已隱藏；已隱藏另列', () => {

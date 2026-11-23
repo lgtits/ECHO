@@ -18,9 +18,12 @@ export type SessionRow = {
 export type ReplyRow = {
   id: string;
   post_id: string;
+  author_kind: 'staff' | 'member';
   author_id: string | null;
   author_name: string;
   body: string;
+  is_hidden: boolean;
+  hidden_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -31,7 +34,10 @@ export type PostRow = {
   nickname: string | null;
   body: string;
   upvote_count: number;
+  /** 牧者回覆數 */
   reply_count: number;
+  /** 未隱藏的接續留言數（spec US10） */
+  comment_count: number;
   is_hidden: boolean;
   hidden_by_name: string | null;
   hidden_at: string | null;
@@ -50,11 +56,13 @@ export type SessionCountRow = {
 export const SESSION_COLUMNS =
   'id, code, title, speaker, scripture, sermon_date, status, auto_close_at, created_at';
 
-export const REPLY_COLUMNS = 'id, post_id, author_id, author_name, body, created_at, updated_at';
+/** replies 有欄位層級權限（member_id 讀不到），必須明確列出欄位 */
+export const REPLY_COLUMNS =
+  'id, post_id, author_kind, author_id, author_name, body, is_hidden, hidden_at, created_at, updated_at';
 
 /** posts 有欄位層級權限（author_id 讀不到），必須明確列出欄位，不能用 *（plan §3.2） */
 export const POST_COLUMNS =
-  'id, session_id, nickname, body, upvote_count, reply_count, is_hidden, hidden_by_name, hidden_at, created_at, ' +
+  'id, session_id, nickname, body, upvote_count, reply_count, comment_count, is_hidden, hidden_by_name, hidden_at, created_at, ' +
   `replies (${REPLY_COLUMNS}), upvotes (user_id)`;
 
 export function toSession(r: SessionRow): Session {
@@ -83,9 +91,12 @@ export function toReply(r: ReplyRow): Reply {
   return {
     id: r.id,
     postId: r.post_id,
+    authorKind: r.author_kind,
     authorId: r.author_id,
     authorName: r.author_name,
     body: r.body,
+    isHidden: r.is_hidden,
+    hiddenAt: r.hidden_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

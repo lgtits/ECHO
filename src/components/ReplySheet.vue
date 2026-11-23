@@ -62,7 +62,7 @@ watch(
 
 const tooLong = computed(() => body.value.length > LIMITS.replyBody);
 const canSend = computed(() => !!body.value.trim() && !tooLong.value && !sending.value);
-const isMine = (r: Reply) => r.authorId === auth.viewer?.uid;
+const isMine = (r: Reply) => r.authorKind === 'staff' && r.authorId === auth.viewer?.uid;
 // 編輯舊回覆時名稱不變（spec D18），只顯示
 const editingAuthor = computed(
   () => props.post.replies.find((r) => r.id === editingId.value)?.authorName ?? '',
@@ -152,9 +152,16 @@ function onHide() {
           v-for="r in post.replies"
           :key="r.id"
           class="ctx__reply"
-          :class="{ 'ctx__reply--editing': editingId === r.id }"
+          :class="{
+            'ctx__reply--editing': editingId === r.id,
+            'ctx__reply--member': r.authorKind === 'member',
+          }"
         >
-          <div class="ctx__meta">{{ r.authorName }} · {{ formatPostTime(r.createdAt) }}</div>
+          <!-- 會友接續留言（spec US10）：只顯示，隱藏、刪除在留言卡片上操作 -->
+          <div class="ctx__meta">
+            {{ r.authorName }} · {{ formatPostTime(r.createdAt)
+            }}<template v-if="r.isHidden"> · 已隱藏</template>
+          </div>
           <div class="ctx__reply-body">{{ r.body }}</div>
           <div v-if="isMine(r)" class="ctx__actions">
             <template v-if="editingId === r.id">
@@ -223,6 +230,14 @@ function onHide() {
 
     &--editing {
       outline: 2px solid var(--echo-primary);
+    }
+
+    // 會友接續留言：左側細線、不加底色（同留言卡片）
+    &--member {
+      padding: 2px 0 2px 12px;
+      border-left: 2px solid var(--echo-line);
+      border-radius: 0;
+      background: transparent;
     }
   }
 
