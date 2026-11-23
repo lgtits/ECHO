@@ -1,49 +1,19 @@
 <script setup lang="ts">
-// 接續留言（ux.md M5；spec US10）：會友在別人的留言底下接著寫。
-// 外觀與撰寫留言相同（ComposeSheet），手機、平板、電腦都用面板；上方固定顯示原留言與底下已有的內容。
-// 以管理者身分開啟時也是一般接續留言（不是牧者回覆），輸入框 placeholder 改為提示（AC10.9）。
+// 接續留言（ux.md M5；spec US10）：會友在別人的留言底下接著寫。手機、平板用。
+// 外觀與撰寫留言相同（ComposeSheet）；上方固定顯示原留言與底下已有的內容。
+// 電腦不開面板，直接在卡片下方展開（CommentInline）；輸入狀態共用 useCommentDraft。
 import { computed, ref, watch } from 'vue';
-import { useQuasar } from 'quasar';
 import type { Post } from '@/types/models';
 import { ANONYMOUS, LIMITS } from '@/types/models';
-import { useAuthStore } from '@/stores/auth';
-import { useBoardStore } from '@/stores/board';
-import { ServiceError } from '@/services';
-import { errorMessage } from '@/utils/errors';
 import { formatPostTime } from '@/utils/time';
-import { useNickname } from '@/composables/useNickname';
+import { useCommentDraft } from '@/composables/useCommentDraft';
 import ComposeSheet from './ComposeSheet.vue';
 
 const props = defineProps<{ post: Post }>();
 const open = defineModel<boolean>({ default: false });
 
-const $q = useQuasar();
-const auth = useAuthStore();
-const board = useBoardStore();
-const nickname = useNickname();
-const maxBody = LIMITS.commentBody;
-
-// 每則留言各自的草稿，不小心關掉也不會遺失
-const draftKey = computed(() => `echo.commentDraft.${props.post.id}`);
-function readDraft(): string {
-  try {
-    return sessionStorage.getItem(draftKey.value) ?? '';
-  } catch {
-    return '';
-  }
-}
-function writeDraft(v: string) {
-  try {
-    if (v) sessionStorage.setItem(draftKey.value, v);
-    else sessionStorage.removeItem(draftKey.value);
-  } catch {
-    // 無痕模式等情況
-  }
-}
-
-const body = ref(readDraft());
-const sending = ref(false);
-const error = ref('');
+const { body, nickname, sending, error, shownError, tooLong, canSend, placeholder, maxBody, submit } =
+  useCommentDraft(() => props.post);
 
 // 上方只顯示最近幾則，留言很多時輸入框才不會被擠小；較早的可以展開（ux.md M5）
 const RECENT = 2;
@@ -61,14 +31,9 @@ const shownReplies = computed(() =>
 );
 const olderCount = computed(() => props.post.replies.length - shownReplies.value.length);
 
-watch(body, writeDraft);
 watch(
   () => props.post.id,
-  () => {
-    body.value = readDraft();
-    error.value = '';
-    showAll.value = false;
-  },
+  () => (showAll.value = false),
 );
 watch(open, (v) => {
   if (v) {
@@ -77,30 +42,8 @@ watch(open, (v) => {
   }
 });
 
-const tooLong = computed(() => body.value.length > maxBody);
-// 場次結束後不能接續留言（AC10.4），管理者在這裡也一樣
-const closed = computed(() => !board.writable);
-const canSend = computed(
-  () => !!body.value.trim() && !tooLong.value && !sending.value && !closed.value,
-);
-const shownError = computed(
-  () => error.value || (closed.value ? errorMessage(new ServiceError('session_closed')) : ''),
-);
-
-async function submit() {
-  if (!canSend.value) return;
-  sending.value = true;
-  error.value = '';
-  try {
-    await board.addComment(props.post.id, body.value, nickname.value);
-    body.value = '';
-    open.value = false;
-    $q.notify({ message: '已送出，謝謝你的回應' });
-  } catch (e) {
-    error.value = errorMessage(e); // 失敗時保留內容（ux.md M3）
-  } finally {
-    sending.value = false;
-  }
+async function send() {
+  if (await submit()) open.value = false;
 }
 </script>
 
@@ -112,16 +55,12 @@ async function submit() {
     v-model:body="body"
     title="接續留言"
     text-label="接續留言內容"
-    :placeholder="
-      auth.isStaff
-        ? '你目前以管理者身分登入，這裡的留言會顯示為一般會友留言；要以牧者身分回覆，請到管理頁。'
-        : '接著這則留言寫下你的想法…'
-    "
+    :placeholder="placeholder"
     :maxlength="maxBody + 50"
     :can-send="canSend"
     :sending="sending"
     :error="shownError"
-    @submit="submit"
+    @submit="send"
   >
     <!-- 原留言與底下已有的回覆、接續留言 -->
     <template #context>

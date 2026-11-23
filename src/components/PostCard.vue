@@ -211,6 +211,9 @@ const shownReplies = computed(() =>
     >
       收合留言
     </button>
+
+    <!-- 電腦版接續留言的輸入框（CommentInline，由頁面放進來） -->
+    <slot name="after" />
   </article>
 </template>
 

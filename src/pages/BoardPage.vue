@@ -9,6 +9,7 @@ import { useBreakpoint } from '@/composables/useBreakpoint';
 import PostCard from '@/components/PostCard.vue';
 import PostComposer from '@/components/PostComposer.vue';
 import CommentSheet from '@/components/CommentSheet.vue';
+import CommentInline from '@/components/CommentInline.vue';
 import MemberHeader from '@/components/MemberHeader.vue';
 import QrProjector from '@/components/QrProjector.vue';
 import { buildSessionUrl } from '@/utils/sessionUrl';
@@ -104,7 +105,12 @@ function openComposer() {
   composerOpen.value = true;
 }
 
+/** 手機、平板開面板；電腦直接在卡片下方展開，再按一次收起（ux.md M5） */
 function openComment(postId: string) {
+  if (isDesktop.value) {
+    commentPostId.value = commentPostId.value === postId ? null : postId;
+    return;
+  }
   commentPostId.value = postId;
   commentOpen.value = true;
 }
@@ -196,7 +202,11 @@ function openComment(postId: string) {
           :writable="board.writable"
           @upvote="upvote(p.id)"
           @comment="openComment(p.id)"
-        />
+        >
+          <template v-if="isDesktop && commentPostId === p.id && board.writable" #after>
+            <CommentInline :post="p" @close="commentPostId = null" />
+          </template>
+        </PostCard>
       </TransitionGroup>
     </main>
 
@@ -221,7 +231,7 @@ function openComment(postId: string) {
 
     <PostComposer v-if="!isDesktop" v-model="composerOpen" variant="dialog" />
 
-    <CommentSheet v-if="commentPost" v-model="commentOpen" :post="commentPost" />
+    <CommentSheet v-if="commentPost && !isDesktop" v-model="commentOpen" :post="commentPost" />
 
     <QrProjector
       v-if="s && qrOpen"

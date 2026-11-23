@@ -138,6 +138,7 @@
 - [x] **T151** 排序加入「最多留言」（會友端、管理端；放在「最多附議」之後）：依底下牧者回覆＋接續留言則數，一樣多時較新的在前；數字變動時不即時重排 + Vitest（spec AC3.3、AC6.1、ux.md §6.2，2026-11-23）
 - [~] **T152** iOS 撰寫面板捲動：上方區塊與輸入框 `overscroll-behavior: contain`、頂列底列 `touch-action: none`，避免捲動傳到後面頁面；接續留言面板展開較早的回應時收起鍵盤、上方區塊放大到 60%（ux.md M5，2026-11-23）。待 iPhone 實機確認 `👤`
 - [~] **T153** 管理者在會友留言板的接續留言改為一般接續留言（不是牧者回覆），輸入框 placeholder 改為提示：migration `20261123010000_staff_member_comments.sql`（開放 `insert (author_kind)`）+ pgTAP；`CommentSheet` 拿掉「回應者」模式；services 指定 `author_kind = member`（spec AC10.9，2026-11-23）。待在 Supabase 執行 migration `👤`
+- [x] **T154** 電腦版接續留言不開彈窗：卡片下方直接展開 `CommentInline`（`PostCard` 加 `after` slot），手機、平板仍用 `CommentSheet`；輸入狀態抽成 `useCommentDraft` 共用（ux.md M5，2026-11-23）
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 
