@@ -10,7 +10,12 @@ import { errorMessage } from '@/utils/errors';
 import { formatPostTime } from '@/utils/time';
 import { useReplyAuthor } from '@/composables/useReplyAuthor';
 
-const props = defineProps<{ post: Post; autofocus?: boolean }>();
+const props = defineProps<{
+  post: Post;
+  autofocus?: boolean;
+  /** 從留言卡片「編輯」開啟：直接進入編輯這則回覆 */
+  editReplyId?: string | null;
+}>();
 const emit = defineEmits<{ sent: []; close: [] }>();
 
 const $q = useQuasar();
@@ -62,6 +67,15 @@ function startEdit(id: string, text: string) {
   editingId.value = id;
   editBody.value = text;
 }
+
+watch(
+  () => [props.post.id, props.editReplyId] as const,
+  () => {
+    const r = props.post.replies.find((x) => x.id === props.editReplyId);
+    if (r && r.authorKind === 'staff') startEdit(r.id, r.body);
+  },
+  { immediate: true },
+);
 
 async function saveEdit() {
   if (!editingId.value || !editBody.value.trim()) return;

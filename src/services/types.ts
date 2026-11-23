@@ -5,6 +5,7 @@ import type {
   Post,
   PostInput,
   Reply,
+  ReplyVersion,
   Session,
   SessionInput,
   SessionStatus,
@@ -89,6 +90,8 @@ export interface RepliesService {
   comment(postId: string, body: string, nickname: string): Promise<Reply>;
   /** 隱藏／取消隱藏會友的接續留言（AC10.7） */
   setHidden(replyId: string, hidden: boolean): Promise<Reply>;
+  /** 編輯記錄：所有版本，舊到新，最後一筆是目前的內容（spec AC6.6） */
+  history(reply: Reply): Promise<ReplyVersion[]>;
   update(replyId: string, body: string): Promise<Reply>;
   /** 刪除＝封存（spec D20） */
   remove(replyId: string): Promise<void>;

@@ -5,7 +5,8 @@
 import { computed, ref } from 'vue';
 import ClampText from './ClampText.vue';
 import ActionIcon from './ActionIcon.vue';
-import type { Post } from '@/types/models';
+import ReplyHistoryDialog from './ReplyHistoryDialog.vue';
+import type { Post, Reply } from '@/types/models';
 import { formatHm, formatPostTime } from '@/utils/time';
 import { useClock } from '@/composables/useClock';
 
@@ -29,6 +30,8 @@ const emit = defineEmits<{
   hide: [hidden: boolean];
   delete: [];
   deleteReply: [replyId: string];
+  /** 管理模式：編輯牧者回覆（手機面板不列出回覆，改從卡片開啟，ux.md A5） */
+  editReply: [replyId: string];
   /** 會友模式：接續留言（AC10.1） */
   comment: [];
   /** 管理模式：隱藏／刪除會友的接續留言（AC10.7） */
@@ -57,6 +60,15 @@ const collapsedIds = computed(
 const shownReplies = computed(() =>
   props.post.replies.filter((r) => !collapsedIds.value.has(r.id)),
 );
+
+// 編輯記錄（spec AC6.6）：點回覆上的「已編輯」開啟；跟著即時更新的回覆，開著時又被編輯會重新讀取
+const historyId = ref<string | null>(null);
+const historyOpen = ref(false);
+const historyReply = computed(() => props.post.replies.find((r) => r.id === historyId.value));
+function showHistory(r: Reply) {
+  historyId.value = r.id;
+  historyOpen.value = true;
+}
 </script>
 
 <template>
@@ -156,17 +168,41 @@ const shownReplies = computed(() =>
       <!-- 牧者回覆 -->
       <div v-if="r.authorKind === 'staff'" class="reply">
         <div class="reply__head">
-          <span>{{ r.authorName }}回覆 · {{ formatPostTime(r.createdAt, new Date(clock)) }}</span>
-          <!-- 管理模式：不必打開回覆面板就能刪除回覆（AC7.5） -->
-          <button
-            v-if="mode === 'admin'"
-            type="button"
-            class="btn btn--text btn--danger reply__delete"
-            :aria-label="`刪除${r.authorName}的回覆`"
-            @click="emit('deleteReply', r.id)"
-          >
-            刪除
-          </button>
+          <span>
+            {{ r.authorName }}回覆 · {{ formatPostTime(r.createdAt, new Date(clock)) }}
+            <!-- 編輯過：點了看編輯記錄（會友端、管理端都有） -->
+            <template v-if="r.editedAt">
+              ·
+              <button
+                type="button"
+                class="reply__edited"
+                :aria-label="`已編輯，查看${r.authorName}回覆的編輯記錄`"
+                @click="showHistory(r)"
+              >
+                已編輯
+              </button>
+            </template>
+          </span>
+          <!-- 管理模式：不必打開回覆面板就能編輯、刪除回覆（AC6.3、AC7.5） -->
+          <span v-if="mode === 'admin'" class="reply__actions">
+            <button
+              v-if="canReply"
+              type="button"
+              class="btn btn--text reply__action"
+              :aria-label="`編輯${r.authorName}的回覆`"
+              @click="emit('editReply', r.id)"
+            >
+              編輯
+            </button>
+            <button
+              type="button"
+              class="btn btn--text btn--danger reply__action"
+              :aria-label="`刪除${r.authorName}的回覆`"
+              @click="emit('deleteReply', r.id)"
+            >
+              刪除
+            </button>
+          </span>
         </div>
         <ClampText class="reply__body" :text="r.body" :lines="3" />
       </div>
@@ -214,6 +250,8 @@ const shownReplies = computed(() =>
 
     <!-- 電腦版接續留言的輸入框（CommentInline，由頁面放進來） -->
     <slot name="after" />
+
+    <ReplyHistoryDialog v-if="historyReply" v-model="historyOpen" :reply="historyReply" />
   </article>
 </template>
 
@@ -376,8 +414,33 @@ const shownReplies = computed(() =>
     margin-bottom: 4px;
   }
 
-  &__delete {
+  &__actions {
+    display: flex;
+    flex-shrink: 0;
     margin: -10px -10px -10px 0; // 觸控區維持 44px，不撐高回覆區塊
+  }
+
+  // 「已編輯」：灰色小字、底線，看得出可以點；觸控區往外擴，不撐高
+  &__edited {
+    position: relative;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 400;
+    color: var(--echo-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -12px -8px;
+    }
+  }
+
+  &__action {
     font-size: 14px;
     font-weight: 400;
   }

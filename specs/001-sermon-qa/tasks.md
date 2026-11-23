@@ -136,9 +136,12 @@
 - [x] **T149** 留言卡片的接續留言超過 3 則時只顯示最近 2 則，較早的收成「顯示其他 N 則留言」，展開後可「收合留言」；牧者回覆一律顯示（ux.md M2，2026-11-23）
 - [x] **T150** 管理端留言卡片的附議數與「回覆」改為與會友端相同的圖示＋數字（中空箭頭、留言泡泡）；圖示抽成共用元件 `ActionIcon`（ux.md A4、§5，2026-11-23）
 - [x] **T151** 排序加入「最多留言」（會友端、管理端；放在「最多附議」之後）：依底下牧者回覆＋接續留言則數，一樣多時較新的在前；數字變動時不即時重排 + Vitest（spec AC3.3、AC6.1、ux.md §6.2，2026-11-23）
-- [~] **T152** iOS 撰寫面板捲動：上方區塊與輸入框 `overscroll-behavior: contain`、頂列底列 `touch-action: none`，避免捲動傳到後面頁面；接續留言面板展開較早的回應時收起鍵盤、上方區塊放大到 60%（ux.md M5，2026-11-23）。待 iPhone 實機確認 `👤`
+- [~] **T152** iOS 撰寫面板捲動：上方區塊與輸入框 `overscroll-behavior: contain`、頂列底列 `touch-action: none`，避免捲動傳到後面頁面（ux.md M5，2026-11-23）。接續留言面板展開較早回應的作法實測仍難捲，改為上方只顯示原留言（見 T155）。待 iPhone 實機確認 `👤`
 - [~] **T153** 管理者在會友留言板的接續留言改為一般接續留言（不是牧者回覆），輸入框 placeholder 改為提示：migration `20261123010000_staff_member_comments.sql`（開放 `insert (author_kind)`）+ pgTAP；`CommentSheet` 拿掉「回應者」模式；services 指定 `author_kind = member`（spec AC10.9，2026-11-23）。待在 Supabase 執行 migration `👤`
 - [x] **T154** 電腦版接續留言不開彈窗：卡片下方直接展開 `CommentInline`（`PostCard` 加 `after` slot），手機、平板仍用 `CommentSheet`；輸入狀態抽成 `useCommentDraft` 共用（ux.md M5，2026-11-23）
+- [x] **T155** 手機、平板接續留言面板上方只顯示原留言（內容最多 3 行），不列出底下的回覆與接續留言，上方不需要捲動；拿掉 `ComposeSheet` 的 `contextTall`／`blur`，改加 `fixedContext`（上方整段顯示、不捲動、拖曳不帶動頁面）（ux.md M5，2026-11-23）
+- [x] **T156** 管理端手機、平板、講台模式的回覆面板（`ReplySheet`）同樣只顯示原留言（3 行、`fixedContext`），不列出已有回覆；編輯舊回覆改從留言卡片牧者回覆上的「編輯」開啟（`editReplyId`），電腦右側面板 `ReplyEditor` 也會直接進入編輯（ux.md A5，2026-11-23）
+- [~] **T157** 回覆的編輯記錄：migration `20261123020000_reply_edit_history.sql`（`reply_edits` 表、`replies.edited_at`、trigger 自動記錄、RLS 跟著回覆可見性）+ pgTAP `reply_edits.test.sql`；services `replies.history`、`utils/replyHistory.ts` + Vitest；回覆上的「已編輯」→ `ReplyHistoryDialog`（會友端、管理端；spec AC6.6、D22、ux.md §5，2026-11-23）。待在 Supabase 執行 migration `👤`
 
 **檢查點 3**：兩支手機同時進入同一場次，留言/附議即時互見；以真實資料重走檢查點 1 的完整流程。
 

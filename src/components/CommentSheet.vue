@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // 接續留言（ux.md M5；spec US10）：會友在別人的留言底下接著寫。手機、平板用。
-// 外觀與撰寫留言相同（ComposeSheet）；上方固定顯示原留言與底下已有的內容。
+// 外觀與撰寫留言相同（ComposeSheet）。上方只顯示原留言（最多 3 行），不列出底下的回覆與接續留言：
+// iOS 上可捲動的區塊很難捲、還會帶動後面的頁面，所以上方不做捲動（2026-11-23）。
 // 電腦不開面板，直接在卡片下方展開（CommentInline）；輸入狀態共用 useCommentDraft。
-import { computed, ref, watch } from 'vue';
+import { watch } from 'vue';
 import type { Post } from '@/types/models';
 import { ANONYMOUS, LIMITS } from '@/types/models';
 import { formatPostTime } from '@/utils/time';
@@ -15,31 +16,8 @@ const open = defineModel<boolean>({ default: false });
 const { body, nickname, sending, error, shownError, tooLong, canSend, placeholder, maxBody, submit } =
   useCommentDraft(() => props.post);
 
-// 上方只顯示最近幾則，留言很多時輸入框才不會被擠小；較早的可以展開（ux.md M5）
-const RECENT = 2;
-const showAll = ref(false);
-const sheet = ref<{ blur: () => void } | null>(null);
-
-/** 展開較早的回應：收起鍵盤、上方區塊放大，才好捲動閱讀（iOS 鍵盤佔掉一半畫面） */
-function expandOlder() {
-  showAll.value = true;
-  sheet.value?.blur();
-}
-
-const shownReplies = computed(() =>
-  showAll.value ? props.post.replies : props.post.replies.slice(-RECENT),
-);
-const olderCount = computed(() => props.post.replies.length - shownReplies.value.length);
-
-watch(
-  () => props.post.id,
-  () => (showAll.value = false),
-);
 watch(open, (v) => {
-  if (v) {
-    error.value = '';
-    showAll.value = false;
-  }
+  if (v) error.value = '';
 });
 
 async function send() {
@@ -49,9 +27,8 @@ async function send() {
 
 <template>
   <ComposeSheet
-    ref="sheet"
     v-model="open"
-    :context-tall="showAll"
+    fixed-context
     v-model:body="body"
     title="接續留言"
     text-label="接續留言內容"
@@ -62,34 +39,13 @@ async function send() {
     :error="shownError"
     @submit="send"
   >
-    <!-- 原留言與底下已有的回覆、接續留言 -->
+    <!-- 只顯示原留言 -->
     <template #context>
       <div class="ctx__meta">
         {{ post.nickname || ANONYMOUS }} · {{ formatPostTime(post.createdAt) }} · ↑
         {{ post.upvoteCount }}
       </div>
       <div class="ctx__body">{{ post.body }}</div>
-
-      <button
-        v-if="olderCount > 0"
-        type="button"
-        class="btn btn--text ctx__older"
-        @click="expandOlder"
-      >
-        顯示較早的 {{ olderCount }} 則回應
-      </button>
-
-      <ul v-if="shownReplies.length" class="ctx__replies">
-        <li
-          v-for="r in shownReplies"
-          :key="r.id"
-          class="ctx__reply"
-          :class="{ 'ctx__reply--staff': r.authorKind === 'staff' }"
-        >
-          <div class="ctx__meta">{{ r.authorName }} · {{ formatPostTime(r.createdAt) }}</div>
-          <div class="ctx__reply-body">{{ r.body }}</div>
-        </li>
-      </ul>
     </template>
 
     <template #footer>
@@ -119,44 +75,14 @@ async function send() {
     color: var(--echo-muted);
   }
 
+  // 最多 3 行，上方區塊不需要捲動
   &__body {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
     font-size: 16px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-
-  &__older {
-    margin: 8px 0 -4px -12px;
-    font-size: 14px;
-    color: var(--echo-primary);
-  }
-
-  &__replies {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 12px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  // 接續留言：左側細線（同留言卡片）
-  &__reply {
-    padding: 2px 0 2px 12px;
-    border-left: 2px solid var(--echo-line);
-
-    // 牧者回覆：深抹茶細線＋白底（同回覆面板）
-    &--staff {
-      padding: 10px 12px;
-      border-left: 3px solid var(--echo-primary);
-      border-radius: 4px;
-      background: var(--echo-bg);
-    }
-  }
-
-  &__reply-body {
-    font-size: 15px;
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;

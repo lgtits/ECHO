@@ -34,6 +34,7 @@ const reply: Reply = {
   body: '回覆',
   isHidden: false,
   hiddenAt: null,
+  editedAt: null,
   createdAt: '',
   updatedAt: '',
 };

@@ -24,8 +24,14 @@ export type ReplyRow = {
   body: string;
   is_hidden: boolean;
   hidden_at: string | null;
+  edited_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type ReplyEditRow = {
+  body: string;
+  edited_at: string;
 };
 
 export type PostRow = {
@@ -58,7 +64,7 @@ export const SESSION_COLUMNS =
 
 /** replies 有欄位層級權限（member_id 讀不到），必須明確列出欄位 */
 export const REPLY_COLUMNS =
-  'id, post_id, author_kind, author_id, author_name, body, is_hidden, hidden_at, created_at, updated_at';
+  'id, post_id, author_kind, author_id, author_name, body, is_hidden, hidden_at, edited_at, created_at, updated_at';
 
 /** posts 有欄位層級權限（author_id 讀不到），必須明確列出欄位，不能用 *（plan §3.2） */
 export const POST_COLUMNS =
@@ -97,6 +103,7 @@ export function toReply(r: ReplyRow): Reply {
     body: r.body,
     isHidden: r.is_hidden,
     hiddenAt: r.hidden_at,
+    editedAt: r.edited_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

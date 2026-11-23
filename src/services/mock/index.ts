@@ -20,6 +20,7 @@ import {
   setLiveActivity,
 } from './db';
 import { SAMPLE_POSTS, genCode } from './seed';
+import { buildVersions } from '@/utils/replyHistory';
 
 // ── 身分 ───────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ const toReply = (r: DbReply): Reply => ({
   body: r.body,
   isHidden: r.isHidden,
   hiddenAt: r.hiddenAt,
+  editedAt: r.editedAt,
   createdAt: r.createdAt,
   updatedAt: r.updatedAt,
 });
@@ -443,6 +445,7 @@ export const mockServices: Services = {
         body: text,
         isHidden: false,
         hiddenAt: null,
+        editedAt: null,
         createdAt: now,
         updatedAt: now,
       };
@@ -478,12 +481,21 @@ export const mockServices: Services = {
         body: text,
         isHidden: false,
         hiddenAt: null,
+        editedAt: null,
         createdAt: now,
         updatedAt: now,
       };
       db().replies.push(r);
       commit();
       return toReply(r);
+    },
+    async history(reply) {
+      await delay(80, 200);
+      assertOnline();
+      const edits = db()
+        .replyEdits.filter((e) => e.replyId === reply.id)
+        .map((e) => ({ body: e.body, editedAt: e.editedAt }));
+      return buildVersions(reply, edits);
     },
     async setHidden(replyId, hidden) {
       await delay(120, 250);
@@ -507,7 +519,13 @@ export const mockServices: Services = {
       if (r.authorKind !== 'staff' || r.authorId !== v.uid) throw new ServiceError('forbidden');
       const text = body.trim();
       if (!text || text.length > LIMITS.replyBody) throw new ServiceError('invalid_input');
-      r.body = text;
+      // 內容真的有變才算編輯，留下編輯前的內容（spec AC6.6，同 DB trigger）
+      if (text !== r.body) {
+        const now = new Date().toISOString();
+        db().replyEdits.push({ replyId: r.id, body: r.body, editedAt: now });
+        r.body = text;
+        r.editedAt = now;
+      }
       r.updatedAt = new Date().toISOString();
       commit();
       return toReply(r);

@@ -5,7 +5,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { services } from '@/services';
 import type { ConnectionState } from '@/services/types';
-import type { Post, PostInput, Session } from '@/types/models';
+import type { Post, PostInput, Reply, Session } from '@/types/models';
 import {
   type PostFilter,
   type PostSort,
@@ -297,6 +297,11 @@ export const useBoardStore = defineStore('board', () => {
       posts.value[postId] = { ...p, replies: p.replies.map((x) => (x.id === replyId ? r : x)) };
   }
 
+  /** 回覆的編輯記錄（spec AC6.6）；會友、管理者都能看 */
+  function replyHistory(reply: Reply) {
+    return services.replies.history(reply);
+  }
+
   async function updateReply(postId: string, replyId: string, body: string) {
     const r = await services.replies.update(replyId, body);
     const p = get(postId);
@@ -360,6 +365,7 @@ export const useBoardStore = defineStore('board', () => {
     addComment,
     setReplyHidden,
     updateReply,
+    replyHistory,
     deleteReply,
     setSession,
     startStage,

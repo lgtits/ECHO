@@ -100,7 +100,17 @@ create table replies (
   hidden_by   uuid references staff_members(user_id) on delete set null,
   hidden_at   timestamptz,
   created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  updated_at  timestamptz not null default now(),
+  edited_at   timestamptz                  -- 最後一次編輯內容的時間（spec AC6.6）
+);
+
+-- 回覆的編輯記錄（spec AC6.6、D22）：每次改內容存一筆「改之前的內容」，只由 trigger 寫入
+create table reply_edits (
+  id        uuid primary key default gen_random_uuid(),
+  reply_id  uuid not null references replies on delete cascade,
+  body      text not null,                 -- 這次編輯之前的內容
+  edited_at timestamptz not null default now(),
+  edited_by uuid references staff_members(user_id) on delete set null -- 前端讀不到
 );
 ```
 
@@ -133,6 +143,7 @@ create table replies (
 | `upvotes_after_change`    | AFTER INSERT/DELETE | 更新 `posts.upvote_count`                                                                                   |
 | `replies_before_insert`   | BEFORE INSERT       | 管理者且 `author_kind = staff`（預設值）：填 `author_id`，名稱空白時填「牧者」（spec D18）。前端指定 `author_kind = member`（會友留言板，管理者也一樣，AC10.9）或不是管理者：`author_kind = member`、填 `member_id`，名稱空白時填「匿名」，檢查留言可見且場次可寫入、60 秒內 ≥ 5 則拒絕（spec US10） |
 | `replies_before_update`   | BEFORE UPDATE       | 接續留言不能改內容；只有接續留言能隱藏，自動填 `hidden_by / hidden_at`                                       |
+| `replies_log_edit`        | AFTER UPDATE OF body（內容真的有變） | 把改之前的內容存進 `reply_edits`（security definer，前端沒有寫入權限）；`replies_before_update` 同時填 `edited_at`（spec AC6.6） |
 | `replies_after_change`    | AFTER INSERT/DELETE/UPDATE OF deleted_at, is_hidden | 重新計算 `posts.reply_count`（牧者回覆）與 `comment_count`（未隱藏的接續留言）；封存、還原、隱藏都會更新，因此一定會產生 posts 的 UPDATE 事件 |
 | `posts_broadcast_removed` | AFTER UPDATE/DELETE | 留言被隱藏或封存（刪除）時，以 `realtime.send` 廣播 `{post_id}` 到 `session:<id>`（見 §5）                  |
 | `sessions_broadcast_removed` | AFTER UPDATE OF deleted_at | 場次被封存（刪除）時廣播 `session_removed` 到 `session:<id>`，開著的畫面顯示「找不到此場次」（spec D20） |
@@ -180,6 +191,8 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 |               | INSERT                   | 接續留言：留言可見且場次可寫入（spec US10）       | ✓ 牧者回覆；指定 `author_kind = member` 時為接續留言，規則同會友（AC10.9） |
 |               | UPDATE                   | ✗                                                 | 牧者回覆可改 `body`；接續留言只能改 `is_hidden`（封存的不能改） |
 |               | 刪除（`archive_reply`）  | ✗                                                 | ✓ 封存（spec D20）；沒有 DELETE 權限         |
+| reply_edits   | SELECT                   | 所屬回覆看得到時（不含 `edited_by`；spec D22）    | 同左                                         |
+|               | INSERT / UPDATE / DELETE | ✗（只由 trigger 寫入）                            | ✗（只由 trigger 寫入）                       |
 | staff_members | SELECT                   | ✗                                                 | 全部                                         |
 
 > 2026-11-04 起只有一種管理身分（spec D12），不再區分牧者、同工，也不需要 `is_pastor()`。
@@ -366,7 +379,7 @@ DB 產生場次碼 ──▶ 前端組網址 ──▶ qrcode 套件在瀏覽器
 | FR-008 | auth store、路由守衛、staff_members                  | pgTAP、手動         |
 | FR-009 | sessions policy、admin 頁面                          | pgTAP、手動         |
 | FR-010 | QrShareDialog.vue、utils/sessionUrl.ts               | 手動                |
-| FR-011 | replies policy + trigger                             | pgTAP               |
+| FR-011 | replies policy + trigger；編輯記錄 reply_edits + utils/replyHistory.ts | pgTAP（`reply_edits.test.sql`）、Vitest |
 | FR-012 | posts UPDATE policy + trigger                        | pgTAP               |
 | FR-013 | utils/export.ts                                      | Vitest              |
 | FR-014 | StageView.vue（篩選/排序沿用 utils/sortFilter.ts）   | 手動（平板實測）    |

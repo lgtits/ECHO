@@ -40,8 +40,20 @@ export interface Reply {
   /** 只有接續留言能隱藏；會友端看不到隱藏的 */
   isHidden: boolean;
   hiddenAt: string | null;
+  /** 最後一次編輯內容的時間；沒編輯過為 null（spec AC6.6） */
+  editedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** 回覆的一個版本（編輯記錄，spec AC6.6、D22） */
+export interface ReplyVersion {
+  body: string;
+  /** 這個版本開始的時間：原始版本是回覆時間，之後是每次編輯的時間 */
+  at: string;
+  /** 0 = 原始版本，1 = 第 1 次編輯後…… */
+  index: number;
+  current: boolean;
 }
 
 export interface Post {

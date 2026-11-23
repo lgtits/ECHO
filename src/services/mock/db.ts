@@ -45,8 +45,17 @@ export interface DbReply {
   body: string;
   isHidden: boolean;
   hiddenAt: string | null;
+  /** 最後一次編輯內容的時間（spec AC6.6） */
+  editedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** 編輯記錄：編輯之前的內容（同 DB 的 reply_edits） */
+export interface DbReplyEdit {
+  replyId: string;
+  body: string;
+  editedAt: string;
 }
 
 export interface MockDb {
@@ -55,6 +64,7 @@ export interface MockDb {
   posts: DbPost[];
   upvotes: DbUpvote[];
   replies: DbReply[];
+  replyEdits: DbReplyEdit[];
 }
 
 export interface MockStaff {
@@ -63,8 +73,8 @@ export interface MockStaff {
   displayName: string;
 }
 
-/** 2：replies 加 authorKind、isHidden（spec US10，2026-11-23） */
-export const DB_VERSION = 2;
+/** 2：replies 加 authorKind、isHidden（spec US10）；3：編輯記錄（spec AC6.6），2026-11-23 */
+export const DB_VERSION = 3;
 const KEY_DB = 'echo.mock.db';
 const KEY_UID = 'echo.mock.uid';
 export const KEY_STAFF = 'echo.mock.staff';

@@ -8,11 +8,13 @@ import { DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
 import { ServiceError } from '../types';
 import type { ConnectionState, Services, SessionEventHandlers } from '../types';
 import { check, toServiceError } from './errors';
+import { buildVersions } from '@/utils/replyHistory';
 import {
   POST_COLUMNS,
   REPLY_COLUMNS,
   SESSION_COLUMNS,
   type PostRow,
+  type ReplyEditRow,
   type ReplyRow,
   type SessionCountRow,
   type SessionRow,
@@ -366,6 +368,20 @@ export function createSupabaseServices(url: string, key: string): Services {
             .single<ReplyRow>(),
         );
         return toReply(row);
+      },
+      async history(reply) {
+        const rows = check(
+          await db
+            .from('reply_edits')
+            .select('body, edited_at')
+            .eq('reply_id', reply.id)
+            .order('edited_at', { ascending: true })
+            .returns<ReplyEditRow[]>(),
+        );
+        return buildVersions(
+          reply,
+          rows.map((r) => ({ body: r.body, editedAt: r.edited_at })),
+        );
       },
       async update(replyId, body) {
         const text = body.trim();

@@ -63,6 +63,7 @@ ECHO 由兩部分組成：
 | `20261122010000_soft_delete.sql`          | 刪除改為封存，資料保留（spec D20；必須在 `staff_delete_posts` 之後執行） |         |
 | `20261123000000_member_comments.sql`      | 會友接續留言（spec US10、D21；必須在 `soft_delete` 之後執行） |         |
 | `20261123010000_staff_member_comments.sql` | 管理者在會友留言板的留言存成一般接續留言（spec AC10.9） |         |
+| `20261123020000_reply_edit_history.sql`   | 回覆的編輯記錄（spec AC6.6、D22） |         |
 
 之後新增的 migration 也照這個方式執行，並在上表記錄。
 

@@ -39,6 +39,8 @@ const projecting = ref(false);
 const statusBusy = ref(false);
 const replyId = ref<string | null>(null);
 const replyDialog = ref(false);
+/** 從卡片「編輯」開啟時要編輯的回覆 */
+const editReplyId = ref<string | null>(null);
 const heroHidden = ref(false);
 
 const showHero = computed(() => route.query.created === '1' && !heroHidden.value);
@@ -175,6 +177,14 @@ async function copyLink() {
 
 function openReply(postId: string) {
   replyId.value = postId;
+  editReplyId.value = null;
+  if (!showPanel.value) replyDialog.value = true;
+}
+
+/** 卡片上的「編輯」：手機、平板開面板編輯；電腦在右側面板編輯（ux.md A5） */
+function openEditReply(postId: string, rid: string) {
+  replyId.value = postId;
+  editReplyId.value = rid;
   if (!showPanel.value) replyDialog.value = true;
 }
 
@@ -443,6 +453,7 @@ function showNew() {
             @hide="hide(p.id, $event)"
             @delete="confirmDelete(p.id)"
             @delete-reply="confirmDeleteReply(p.id, $event)"
+            @edit-reply="openEditReply(p.id, $event)"
             @hide-comment="(rid, hidden) => hideComment(p.id, rid, hidden)"
             @delete-comment="confirmDeleteComment(p.id, $event)"
           />
@@ -451,7 +462,13 @@ function showNew() {
 
       <!-- 回覆面板（≥ 1024px） -->
       <aside v-if="showPanel" class="cols__panel" aria-label="回覆">
-        <ReplyEditor v-if="replyPost" :post="replyPost" autofocus @close="replyId = null" />
+        <ReplyEditor
+          v-if="replyPost"
+          :post="replyPost"
+          :edit-reply-id="editReplyId"
+          autofocus
+          @close="replyId = null"
+        />
         <div v-else class="panel-empty">
           <p class="panel-empty__title">回覆</p>
           <p class="text-muted">
@@ -473,7 +490,8 @@ function showNew() {
       v-if="!showPanel && replyPost"
       v-model="replyDialog"
       :post="replyPost"
-      @hide="replyId = null"
+      :edit-reply-id="editReplyId"
+      @hide="(replyId = null), (editReplyId = null)"
     />
 
     <QrShareDialog

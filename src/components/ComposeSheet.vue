@@ -15,8 +15,11 @@ const props = defineProps<{
   sendLabel?: string;
   placeholder?: string;
   maxlength?: number;
-  /** 上方內容要讀較長時（例如展開較早的回應）：鍵盤收起時上方區塊放大到 60% */
-  contextTall?: boolean;
+  /**
+   * 上方內容本身就很短（例如接續留言只放原留言 3 行）：整段顯示、不做捲動區塊，
+   * 拖曳時也不會帶動後面的頁面（iOS）。空間不夠時縮的是輸入框。
+   */
+  fixedContext?: boolean;
 }>();
 const open = defineModel<boolean>({ default: false });
 const body = defineModel<string>('body', { required: true });
@@ -53,11 +56,6 @@ function focus() {
   textarea.value?.focus();
 }
 
-/** 收起鍵盤，讓上方內容有空間捲動閱讀 */
-function blur() {
-  textarea.value?.blur();
-}
-
 watch(
   open,
   async (v) => {
@@ -78,7 +76,7 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-defineExpose({ focus, blur });
+defineExpose({ focus });
 </script>
 
 <template>
@@ -93,7 +91,7 @@ defineExpose({ focus, blur });
     @hide="emit('hide')"
   >
     <!-- Quasar 只讓 q-dialog 的直接子層 div 接收點擊，所以外面要包 div -->
-    <div class="compose" :class="{ 'compose--kb': keyboardOpen, 'compose--tall': contextTall }">
+    <div class="compose" :class="{ 'compose--kb': keyboardOpen }">
       <form class="compose__form" :aria-label="title" @submit.prevent="emit('submit')">
         <div class="compose__bar">
           <button type="button" class="btn btn--text btn--muted compose__cancel" @click="open = false">
@@ -111,7 +109,11 @@ defineExpose({ focus, blur });
         </div>
 
         <!-- 回覆時的原留言與已有回覆；空間不夠時在這裡捲動 -->
-        <div v-if="$slots.context" class="compose__context">
+        <div
+          v-if="$slots.context"
+          class="compose__context"
+          :class="{ 'compose__context--fixed': fixedContext }"
+        >
           <slot name="context" />
         </div>
 
@@ -231,14 +233,18 @@ defineExpose({ focus, blur });
     padding-bottom: 4px;
   }
 
-  // 要讀較長的上方內容時（鍵盤收起）放大，比較好捲動
-  &--tall &__context {
-    max-height: 60%;
-  }
-
-  // 鍵盤彈出時可視範圍只剩一半左右，上方內容讓出空間給輸入框（優先於 --tall）
+  // 鍵盤彈出時可視範圍只剩一半左右，上方內容讓出空間給輸入框
   &--kb &__context {
     max-height: 30%;
+  }
+
+  // 固定的上方內容：不限高度、不捲動（鍵盤彈出時也一樣），在上面拖曳不捲動頁面
+  &__context--fixed,
+  &--kb &__context--fixed {
+    flex: none;
+    max-height: none;
+    overflow: hidden;
+    touch-action: none;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 // 示範資料：日期以「現在」為基準產生，任何時候打開都像正在聚會中。
 
 import { nextSunday, toYmd } from '@/utils/time';
-import type { DbPost, DbReply, DbSession, DbUpvote, MockDb } from './db';
+import type { DbPost, DbReply, DbReplyEdit, DbSession, DbUpvote, MockDb } from './db';
 import { DB_VERSION } from './db';
 
 const CODE_CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
@@ -69,6 +69,7 @@ export function buildSeed(myUid: string): MockDb {
   const posts: DbPost[] = [];
   const upvotes: DbUpvote[] = [];
   const replies: DbReply[] = [];
+  const replyEdits: DbReplyEdit[] = [];
   const codes = new Set<string>(['K7PM2X']);
   let n = 0;
   const id = (p: string) => `${p}-${(++n).toString(36)}`;
@@ -162,8 +163,15 @@ export function buildSeed(myUid: string): MockDb {
         body: SAMPLE_REPLY,
         isHidden: false,
         hiddenAt: null,
+        // 示範編輯記錄（spec AC6.6）：回覆後補了一句
+        editedAt: minAgo(0.5),
         createdAt: minAgo(1),
-        updatedAt: minAgo(1),
+        updatedAt: minAgo(0.5),
+      });
+      replyEdits.push({
+        replyId: replies[replies.length - 1]!.id,
+        body: SAMPLE_REPLY.replace('下週小組我們可以再多討論這一段。', ''),
+        editedAt: minAgo(0.5),
       });
     }
     // 會友接續留言（spec US10）：一則在牧者回覆之前、一則已隱藏
@@ -178,6 +186,7 @@ export function buildSeed(myUid: string): MockDb {
         body: c.body,
         isHidden: !!c.hidden,
         hiddenAt: c.hidden ? minAgo(c.ago - 1) : null,
+        editedAt: null,
         createdAt: minAgo(c.ago),
         updatedAt: minAgo(c.ago),
       });
@@ -247,6 +256,7 @@ export function buildSeed(myUid: string): MockDb {
           authorName: speaker === '王牧師' ? '王牧師' : speaker,
           isHidden: false,
           hiddenAt: null,
+          editedAt: null,
           body: '謝謝你的提問。這段經文的重點在於神主動的恩典，我們的回應是信靠與順服。歡迎在小組中繼續分享。',
           createdAt: new Date(new Date(created).getTime() + 3600000).toISOString(),
           updatedAt: new Date(new Date(created).getTime() + 3600000).toISOString(),
@@ -255,5 +265,5 @@ export function buildSeed(myUid: string): MockDb {
     }
   });
 
-  return { version: DB_VERSION, sessions, posts, upvotes, replies };
+  return { version: DB_VERSION, sessions, posts, upvotes, replies, replyEdits };
 }
