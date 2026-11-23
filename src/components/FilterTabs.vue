@@ -20,6 +20,7 @@ const SORT_SHORT: Record<PostSort, string> = {
   top: '附議',
   oldest: '最舊',
   replied: '新回應',
+  comments: '留言數',
 };
 
 const filter = defineModel<PostFilter>('filter', { required: true });

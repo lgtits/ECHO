@@ -131,7 +131,7 @@ create table replies (
 | `posts_before_insert`     | BEFORE INSERT       | 強制 `author_id = auth.uid()`；檢查 `session_is_writable()`；頻率限制（同一人 60 秒內 ≥ 5 則則拒絕，AC2.3） |
 | `posts_before_update`     | BEFORE UPDATE       | 只允許變更 `is_hidden`；自動填 `hidden_by / hidden_at`                                                      |
 | `upvotes_after_change`    | AFTER INSERT/DELETE | 更新 `posts.upvote_count`                                                                                   |
-| `replies_before_insert`   | BEFORE INSERT       | 管理者：`author_kind = staff`、填 `author_id`，名稱空白時填「牧者」（spec D18）。會友：`author_kind = member`、填 `member_id`，名稱空白時填「匿名」，檢查留言可見且場次可寫入、60 秒內 ≥ 5 則拒絕（spec US10） |
+| `replies_before_insert`   | BEFORE INSERT       | 管理者且 `author_kind = staff`（預設值）：填 `author_id`，名稱空白時填「牧者」（spec D18）。前端指定 `author_kind = member`（會友留言板，管理者也一樣，AC10.9）或不是管理者：`author_kind = member`、填 `member_id`，名稱空白時填「匿名」，檢查留言可見且場次可寫入、60 秒內 ≥ 5 則拒絕（spec US10） |
 | `replies_before_update`   | BEFORE UPDATE       | 接續留言不能改內容；只有接續留言能隱藏，自動填 `hidden_by / hidden_at`                                       |
 | `replies_after_change`    | AFTER INSERT/DELETE/UPDATE OF deleted_at, is_hidden | 重新計算 `posts.reply_count`（牧者回覆）與 `comment_count`（未隱藏的接續留言）；封存、還原、隱藏都會更新，因此一定會產生 posts 的 UPDATE 事件 |
 | `posts_broadcast_removed` | AFTER UPDATE/DELETE | 留言被隱藏或封存（刪除）時，以 `realtime.send` 廣播 `{post_id}` 到 `session:<id>`（見 §5）                  |
@@ -177,7 +177,7 @@ grant select (id, session_id, nickname, body, upvote_count, reply_count,
 | upvotes       | SELECT                   | 只看自己的（判斷已附議）                          | 只看自己的                                   |
 |               | INSERT / DELETE          | 自己的，且留言可見、場次可寫入                    | 同左                                         |
 | replies       | SELECT                   | 未封存、未隱藏，且所屬留言可見時（不含 `member_id`） | 未封存，且所屬留言可見時（不含 `member_id`） |
-|               | INSERT                   | 接續留言：留言可見且場次可寫入（spec US10）       | ✓（存成牧者回覆）                            |
+|               | INSERT                   | 接續留言：留言可見且場次可寫入（spec US10）       | ✓ 牧者回覆；指定 `author_kind = member` 時為接續留言，規則同會友（AC10.9） |
 |               | UPDATE                   | ✗                                                 | 牧者回覆可改 `body`；接續留言只能改 `is_hidden`（封存的不能改） |
 |               | 刪除（`archive_reply`）  | ✗                                                 | ✓ 封存（spec D20）；沒有 DELETE 權限         |
 | staff_members | SELECT                   | ✗                                                 | 全部                                         |

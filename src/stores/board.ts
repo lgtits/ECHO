@@ -12,6 +12,7 @@ import {
   countByFilter,
   insertionIndex,
   isOrderStale,
+  LIVE_SORTS,
   matchesFilter,
   sortPosts,
 } from '@/utils/sortFilter';
@@ -73,10 +74,9 @@ export const useBoardStore = defineStore('board', () => {
       }).length,
   );
 
-  /** 「最多附議」「最新回應」下附議數或回覆變了但不即時重排（ux.md §6.2） */
+  /** 「最多附議」「最多留言」「最新回應」下數字或回覆變了但不即時重排（ux.md §6.2） */
   const orderStale = computed(
-    () =>
-      (sort.value === 'top' || sort.value === 'replied') && isOrderStale(visible.value, sort.value),
+    () => LIVE_SORTS.includes(sort.value) && isOrderStale(visible.value, sort.value),
   );
 
   /** 可留言／附議：開放中且未到自動結束時間（與 DB 的 session_is_writable 相同） */

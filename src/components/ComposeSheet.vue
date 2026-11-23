@@ -15,6 +15,8 @@ const props = defineProps<{
   sendLabel?: string;
   placeholder?: string;
   maxlength?: number;
+  /** 上方內容要讀較長時（例如展開較早的回應）：鍵盤收起時上方區塊放大到 60% */
+  contextTall?: boolean;
 }>();
 const open = defineModel<boolean>({ default: false });
 const body = defineModel<string>('body', { required: true });
@@ -51,6 +53,11 @@ function focus() {
   textarea.value?.focus();
 }
 
+/** 收起鍵盤，讓上方內容有空間捲動閱讀 */
+function blur() {
+  textarea.value?.blur();
+}
+
 watch(
   open,
   async (v) => {
@@ -71,7 +78,7 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-defineExpose({ focus });
+defineExpose({ focus, blur });
 </script>
 
 <template>
@@ -86,7 +93,7 @@ defineExpose({ focus });
     @hide="emit('hide')"
   >
     <!-- Quasar 只讓 q-dialog 的直接子層 div 接收點擊，所以外面要包 div -->
-    <div class="compose" :class="{ 'compose--kb': keyboardOpen }">
+    <div class="compose" :class="{ 'compose--kb': keyboardOpen, 'compose--tall': contextTall }">
       <form class="compose__form" :aria-label="title" @submit.prevent="emit('submit')">
         <div class="compose__bar">
           <button type="button" class="btn btn--text btn--muted compose__cancel" @click="open = false">
@@ -142,6 +149,12 @@ defineExpose({ focus });
     min-height: 0;
   }
 
+  // 頂列、底列不能捲動：在上面拖曳時不要讓 iOS 捲動後面的頁面
+  &__bar,
+  &__foot {
+    touch-action: none;
+  }
+
   &__bar {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -170,6 +183,9 @@ defineExpose({ focus });
     flex: 0 1 auto;
     max-height: 40%;
     overflow-y: auto;
+    // iOS：捲到頂或底時不要把捲動傳給後面的頁面（不然整頁會跟著捲走）
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 12px 16px;
     border-bottom: 1px solid var(--echo-line);
     background: var(--echo-subtle);
@@ -193,6 +209,7 @@ defineExpose({ focus });
     font-size: 17px;
     line-height: 1.6;
     resize: none;
+    overscroll-behavior: contain;
 
     &:focus {
       outline: none;
@@ -214,7 +231,12 @@ defineExpose({ focus });
     padding-bottom: 4px;
   }
 
-  // 鍵盤彈出時可視範圍只剩一半左右，上方內容讓出空間給輸入框
+  // 要讀較長的上方內容時（鍵盤收起）放大，比較好捲動
+  &--tall &__context {
+    max-height: 60%;
+  }
+
+  // 鍵盤彈出時可視範圍只剩一半左右，上方內容讓出空間給輸入框（優先於 --tall）
   &--kb &__context {
     max-height: 30%;
   }

@@ -4,7 +4,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(27);
 
 -- ── 測試資料 ────────────────────────────────────────────
 -- a1 = 管理者；b1、b2 = 會友
@@ -76,10 +76,11 @@ select throws_ok(
   'select member_id from public.replies',
   '42501', null, '前端角色讀不到接續留言的作者代碼（AC10.8、D11）'
 );
-select throws_ok(
-  $$insert into public.replies (post_id, body, author_kind)
-    values ('00000000-0000-0000-0000-0000000000d1', '冒充', 'staff')$$,
-  '42501', null, '會友不能自己指定 author_kind 冒充牧者'
+insert into public.replies (post_id, body, author_kind)
+  values ('00000000-0000-0000-0000-0000000000d1', '冒充', 'staff');
+select is(
+  (select author_kind from public.replies where body = '冒充'), 'member',
+  '會友指定 author_kind = staff 也只會存成接續留言，不能冒充牧者'
 );
 select throws_ok(
   $$insert into public.replies (post_id, body) values ('00000000-0000-0000-0000-0000000000d1', repeat('字', 501))$$,
@@ -103,10 +104,10 @@ select throws_ok(
   'P0001', 'echo:forbidden', '會友不能刪除接續留言'
 );
 
--- 頻率限制：60 秒內第 6 則被拒絕（AC10.6）
+-- 頻率限制：60 秒內第 6 則被拒絕（AC10.6）；前面已有 e1、e2、冒充 3 則
 do $$
 begin
-  for i in 1..3 loop
+  for i in 1..2 loop
     insert into public.replies (post_id, body) values ('00000000-0000-0000-0000-0000000000d1', '連續 ' || i);
   end loop;
 end;
@@ -182,6 +183,17 @@ select results_eq(
     where r.id = '00000000-0000-0000-0000-0000000000e1'$$,
   $$values (null::uuid, null::timestamptz, 4)$$,
   '取消隱藏後清除紀錄，接續留言數加回來'
+);
+
+-- 管理者在會友留言板留言：指定 author_kind = member（AC10.9）
+insert into public.replies (id, post_id, body, author_kind)
+  values ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-0000000000d1', '會友頁上的留言', 'member');
+select results_eq(
+  $$select r.author_kind, r.author_id, r.author_name, p.reply_count, p.comment_count
+    from public.replies r join public.posts p on p.id = r.post_id
+    where r.id = '00000000-0000-0000-0000-0000000000e3'$$,
+  $$values ('member'::text, null::uuid, '匿名'::text, 1, 5)$$,
+  '管理者在會友留言板的留言是一般接續留言，不算回覆（AC10.9）'
 );
 
 select * from finish();

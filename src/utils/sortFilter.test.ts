@@ -83,6 +83,16 @@ describe('sortPosts', () => {
     expect(sortPosts(list, 'replied').map((p) => p.id)).toEqual(['a', 'b', 'c']);
   });
 
+  it('最多留言：牧者回覆＋接續留言則數多的在前，一樣多時較新的在前', () => {
+    const list = [
+      post('a', 1, 0, { replies: [reply] }),
+      post('b', 2, 0, { replies: [reply, comment, comment] }),
+      post('c', 3, 0, { replies: [comment] }),
+      post('d', 4),
+    ];
+    expect(sortPosts(list, 'comments').map((p) => p.id)).toEqual(['b', 'c', 'a', 'd']);
+  });
+
   it('不改變原陣列', () => {
     sortPosts(posts, 'top');
     expect(posts.map((p) => p.id)).toEqual(['a', 'b', 'c']);

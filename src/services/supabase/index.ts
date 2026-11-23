@@ -340,7 +340,7 @@ export function createSupabaseServices(url: string, key: string): Services {
         );
         return toReply(row);
       },
-      // 接續留言（spec US10）：同一張表，DB 依身分決定是會友接續留言或牧者回覆
+      // 接續留言（spec US10）：同一張表，指定 author_kind = member，管理者也一樣（AC10.9）
       async comment(postId, body, nickname) {
         const text = body.trim();
         const name = nickname.trim();
@@ -350,7 +350,7 @@ export function createSupabaseServices(url: string, key: string): Services {
         const row = check(
           await db
             .from('replies')
-            .insert({ post_id: postId, body: text, author_name: name || null })
+            .insert({ post_id: postId, body: text, author_name: name || null, author_kind: 'member' })
             .select(REPLY_COLUMNS)
             .single<ReplyRow>(),
         );

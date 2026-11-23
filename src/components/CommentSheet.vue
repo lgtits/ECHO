@@ -1,18 +1,17 @@
 <script setup lang="ts">
 // 接續留言（ux.md M5；spec US10）：會友在別人的留言底下接著寫。
 // 外觀與撰寫留言相同（ComposeSheet），手機、平板、電腦都用面板；上方固定顯示原留言與底下已有的內容。
-// 以管理者身分開啟時，DB 會存成牧者回覆，所以欄位改為「回應者」（AC10.9）。
+// 以管理者身分開啟時也是一般接續留言（不是牧者回覆），輸入框 placeholder 改為提示（AC10.9）。
 import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { Post } from '@/types/models';
-import { ANONYMOUS, DEFAULT_REPLY_AUTHOR, LIMITS } from '@/types/models';
+import { ANONYMOUS, LIMITS } from '@/types/models';
 import { useAuthStore } from '@/stores/auth';
 import { useBoardStore } from '@/stores/board';
 import { ServiceError } from '@/services';
 import { errorMessage } from '@/utils/errors';
 import { formatPostTime } from '@/utils/time';
 import { useNickname } from '@/composables/useNickname';
-import { useReplyAuthor } from '@/composables/useReplyAuthor';
 import ComposeSheet from './ComposeSheet.vue';
 
 const props = defineProps<{ post: Post }>();
@@ -22,17 +21,7 @@ const $q = useQuasar();
 const auth = useAuthStore();
 const board = useBoardStore();
 const nickname = useNickname();
-const replyAuthor = useReplyAuthor();
-
-const asStaff = computed(() => auth.isStaff);
-const name = computed({
-  get: () => (asStaff.value ? replyAuthor.value : nickname.value),
-  set: (v: string) => {
-    if (asStaff.value) replyAuthor.value = v;
-    else nickname.value = v;
-  },
-});
-const maxBody = computed(() => (asStaff.value ? LIMITS.replyBody : LIMITS.commentBody));
+const maxBody = LIMITS.commentBody;
 
 // 每則留言各自的草稿，不小心關掉也不會遺失
 const draftKey = computed(() => `echo.commentDraft.${props.post.id}`);
@@ -59,6 +48,14 @@ const error = ref('');
 // 上方只顯示最近幾則，留言很多時輸入框才不會被擠小；較早的可以展開（ux.md M5）
 const RECENT = 2;
 const showAll = ref(false);
+const sheet = ref<{ blur: () => void } | null>(null);
+
+/** 展開較早的回應：收起鍵盤、上方區塊放大，才好捲動閱讀（iOS 鍵盤佔掉一半畫面） */
+function expandOlder() {
+  showAll.value = true;
+  sheet.value?.blur();
+}
+
 const shownReplies = computed(() =>
   showAll.value ? props.post.replies : props.post.replies.slice(-RECENT),
 );
@@ -80,9 +77,9 @@ watch(open, (v) => {
   }
 });
 
-const tooLong = computed(() => body.value.length > maxBody.value);
-// 管理者在場次結束後仍可回覆（AC6.5）；會友不行（AC10.4）
-const closed = computed(() => !asStaff.value && !board.writable);
+const tooLong = computed(() => body.value.length > maxBody);
+// 場次結束後不能接續留言（AC10.4），管理者在這裡也一樣
+const closed = computed(() => !board.writable);
 const canSend = computed(
   () => !!body.value.trim() && !tooLong.value && !sending.value && !closed.value,
 );
@@ -95,10 +92,10 @@ async function submit() {
   sending.value = true;
   error.value = '';
   try {
-    await board.addComment(props.post.id, body.value, name.value);
+    await board.addComment(props.post.id, body.value, nickname.value);
     body.value = '';
     open.value = false;
-    $q.notify({ message: asStaff.value ? '已送出回覆' : '已送出，謝謝你的回應' });
+    $q.notify({ message: '已送出，謝謝你的回應' });
   } catch (e) {
     error.value = errorMessage(e); // 失敗時保留內容（ux.md M3）
   } finally {
@@ -109,11 +106,17 @@ async function submit() {
 
 <template>
   <ComposeSheet
+    ref="sheet"
     v-model="open"
+    :context-tall="showAll"
     v-model:body="body"
-    :title="asStaff ? '回覆留言' : '接續留言'"
-    :text-label="asStaff ? '回覆內容' : '接續留言內容'"
-    :placeholder="asStaff ? '回覆會顯示在這則留言下方，會友即時看得到' : '接著這則留言寫下你的想法…'"
+    title="接續留言"
+    text-label="接續留言內容"
+    :placeholder="
+      auth.isStaff
+        ? '你目前以管理者身分登入，這裡的留言會顯示為一般會友留言；要以牧者身分回覆，請到管理頁。'
+        : '接著這則留言寫下你的想法…'
+    "
     :maxlength="maxBody + 50"
     :can-send="canSend"
     :sending="sending"
@@ -132,7 +135,7 @@ async function submit() {
         v-if="olderCount > 0"
         type="button"
         class="btn btn--text ctx__older"
-        @click="showAll = true"
+        @click="expandOlder"
       >
         顯示較早的 {{ olderCount }} 則回應
       </button>
@@ -152,16 +155,13 @@ async function submit() {
 
     <template #footer>
       <label class="ctx__name">
-        <span v-if="asStaff" class="ctx__name-label">回應者</span>
-        <span v-else class="sr-only">暱稱（選填）</span>
+        <span class="sr-only">暱稱（選填）</span>
         <input
-          v-model="name"
+          v-model="nickname"
           class="ctx__name-input"
-          :placeholder="
-            asStaff ? `未填寫預設為「${DEFAULT_REPLY_AUTHOR}」` : `暱稱（選填，不填顯示${ANONYMOUS}）`
-          "
-          :maxlength="asStaff ? LIMITS.replyAuthor : LIMITS.nickname"
-          :autocomplete="asStaff ? 'off' : 'nickname'"
+          :placeholder="`暱稱（選填，不填顯示${ANONYMOUS}）`"
+          :maxlength="LIMITS.nickname"
+          autocomplete="nickname"
           enterkeyhint="done"
         />
       </label>
@@ -231,11 +231,6 @@ async function submit() {
     min-width: 0;
   }
 
-  &__name-label {
-    flex-shrink: 0;
-    font-size: 15px;
-    color: var(--echo-muted);
-  }
 
   &__name-input {
     flex: 1;

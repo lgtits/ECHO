@@ -78,7 +78,8 @@ begin
 end;
 $$;
 
--- 回覆／接續留言：身分決定種類。管理者一律是牧者回覆（AC10.9）。
+-- 回覆／接續留言：身分決定種類。管理者是牧者回覆
+-- （2026-11-23 起管理者在會友留言板可指定為接續留言，見 20261123010000_staff_member_comments.sql）。
 create or replace function public.replies_before_insert()
 returns trigger
 language plpgsql

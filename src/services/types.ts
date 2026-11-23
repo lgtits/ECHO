@@ -84,7 +84,7 @@ export interface RepliesService {
   create(postId: string, body: string, authorName: string): Promise<Reply>;
   /**
    * 接續留言（spec US10）。nickname 留空顯示「匿名」。
-   * 管理者呼叫時由 DB 存成牧者回覆，nickname 當作回應者名稱（AC10.9）。
+   * 管理者呼叫時也存成一般接續留言，不是牧者回覆（AC10.9）。
    */
   comment(postId: string, body: string, nickname: string): Promise<Reply>;
   /** 隱藏／取消隱藏會友的接續留言（AC10.7） */

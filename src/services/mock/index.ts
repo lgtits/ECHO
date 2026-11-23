@@ -459,8 +459,7 @@ export const mockServices: Services = {
       if (!text || text.length > LIMITS.commentBody || name.length > LIMITS.nickname)
         throw new ServiceError('invalid_input');
       const p = findPost(postId);
-      // 管理者寫的一律是牧者回覆（AC10.9）
-      if (v.staff) return mockServices.replies.create(postId, text, name);
+      // 管理者在會友頁也是一般接續留言（AC10.9）
       if (p.isHidden || !writable(findSession(p.sessionId)))
         throw new ServiceError('session_closed');
       const since = Date.now() - 60000;

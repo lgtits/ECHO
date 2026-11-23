@@ -2,13 +2,16 @@
 
 import type { Post, Reply } from '@/types/models';
 
-export type PostSort = 'newest' | 'top' | 'oldest' | 'replied';
+export type PostSort = 'newest' | 'top' | 'oldest' | 'replied' | 'comments';
 export type PostFilter = 'all' | 'pending' | 'answered' | 'hidden';
 export type FilterCounts = Record<PostFilter, number>;
 
-// 選單順序兩端相同：最新、最舊、最多附議、最新回應
-export const MEMBER_SORTS: PostSort[] = ['newest', 'oldest', 'top', 'replied'];
-export const ADMIN_SORTS: PostSort[] = ['newest', 'oldest', 'top', 'replied'];
+// 選單順序兩端相同：最新、最舊、最多附議、最多留言、最新回應
+export const MEMBER_SORTS: PostSort[] = ['newest', 'oldest', 'top', 'comments', 'replied'];
+export const ADMIN_SORTS: PostSort[] = ['newest', 'oldest', 'top', 'comments', 'replied'];
+
+/** 附議數、留言數、回覆會即時變動的排序：不即時重排，顯示「排序已變動，點此更新」（ux.md §6.2） */
+export const LIVE_SORTS: PostSort[] = ['top', 'comments', 'replied'];
 
 /** 「全部」放第一個且為預設（D13）；會友看不到已隱藏 */
 export const MEMBER_FILTERS: PostFilter[] = ['all', 'pending', 'answered'];
@@ -19,6 +22,7 @@ export const SORT_LABEL: Record<PostSort, string> = {
   oldest: '最舊',
   top: '最多附議',
   replied: '最新回應',
+  comments: '最多留言',
 };
 
 export const FILTER_LABEL: Record<PostFilter, string> = {
@@ -79,6 +83,10 @@ export function comparePosts(sort: PostSort): (a: Post, b: Post) => number {
       // 附議數相同時，較新的在前
       return (a, b) =>
         b.upvoteCount - a.upvoteCount || time(b) - time(a) || a.id.localeCompare(b.id);
+    case 'comments':
+      // 底下的牧者回覆＋接續留言則數（與卡片上留言圖示的數字相同）；一樣多時較新的在前
+      return (a, b) =>
+        b.replies.length - a.replies.length || time(b) - time(a) || a.id.localeCompare(b.id);
     case 'replied':
       // 最近有回覆的在前；沒有回覆的排在後面，依留言時間由新到舊
       return (a, b) => replyTime(b) - replyTime(a) || time(b) - time(a) || a.id.localeCompare(b.id);
